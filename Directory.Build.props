@@ -1,0 +1,25 @@
+<Project>
+  <PropertyGroup>
+    <PackageProjectUrl>https://github.com/NikiforovAll/hangfire-mcp-dotnet</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/NikiforovAll/hangfire-mcp-dotnet</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageIcon>logo.png</PackageIcon>
+    <Authors>Nikiforov Oleksii</Authors>
+    <Description>Remote MCP server for Hangfire — exposes background jobs as MCP tools in-process with the worker.</Description>
+    <PackageTags>mcp;hangfire;ai;agent</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <RepoRoot>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)'))</RepoRoot>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="$(RepoRoot)\assets\logo.png" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="$(RepoRoot)\README.md" Pack="true" PackagePath="" />
+  </ItemGroup>
+</Project>
