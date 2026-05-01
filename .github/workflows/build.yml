@@ -11,13 +11,9 @@ on:
   workflow_dispatch:
 
 env:
-  # Disable the .NET logo in the console output.
   DOTNET_NOLOGO: true
-  # Disable the .NET first time experience to skip caching NuGet packages and speed up the build.
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
-  # Disable sending .NET CLI telemetry to Microsoft.
   DOTNET_CLI_TELEMETRY_OPTOUT: true
-  # Set the build number in MinVer.
   MINVERBUILDMETADATA: build.${{github.run_number}}
 
 jobs:
@@ -25,74 +21,119 @@ jobs:
     name: Build-${{matrix.os}}
     runs-on: ${{matrix.os}}
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
     steps:
-      - name: "Checkout"
+      - name: Checkout
         uses: actions/checkout@v4
         with:
           lfs: true
           fetch-depth: 0
-      - name: "Install .NET SDK"
+
+      - name: Install .NET SDK
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 9.0.201
-      - name: "Dotnet Tool Restore"
-        run: dotnet tool restore
-        shell: pwsh
-      - name: "Dotnet Cake Build"
-        run: dotnet cake --target=Build
-        shell: pwsh
-      # - name: "Dotnet Cake Test"
-      #   run: dotnet cake --target=Test
-      #   shell: pwsh
-      # - name: "Dotnet Cake Pack"
-      #   run: dotnet cake --target=Pack
-      #   shell: pwsh
-      # - name: "Publish Artefacts"
-      #   uses: actions/upload-artifact@v4
-      #   with:
-      #     name: ${{matrix.os}}
-      #     path: "./Artefacts"
+          global-json-file: global.json
 
-  # push-github-packages:
-  #   name: "Push GitHub Packages"
-  #   needs: build
-  #   if: github.ref == 'refs/heads/main' || github.event_name == 'release'
-  #   environment:
-  #     name: "GitHub Packages"
-  #     url: https://github.com/NikiforovAll/hangfire-mcp/packages/
-  #   permissions:
-  #     packages: write
-  #   runs-on: windows-latest
-  #   steps:
-  #     - name: "Download Artefact"
-  #       uses: actions/download-artifact@v4
-  #       with:
-  #         name: "windows-latest"
-  #     - name: "Dotnet NuGet Add Source"
-  #       run: dotnet nuget add source https://nuget.pkg.github.com/nikiforovall/index.json --name GitHub --username nikiforovall --password ${{secrets.GITHUB_TOKEN}}
-  #       shell: pwsh
-  #     - name: "Dotnet NuGet Push"
-  #       run: dotnet nuget push .\*.nupkg --api-key ${{ github.token }} --source GitHub --skip-duplicate
-  #       shell: pwsh
+      - name: Dotnet Restore
+        run: dotnet restore hangfire-mcp-dotnet.slnx
+        shell: pwsh
 
-  # push-nuget:
-  #   name: "Push NuGet Packages"
-  #   needs: build
-  #   if: github.event_name == 'release'
-  #   environment:
-  #     name: "NuGet"
-  #     url: https://www.nuget.org/packages/Nall.Hangfire.Mcp
-  #   runs-on: windows-latest
-  #   steps:
-  #     - name: "Download Artefact"
-  #       uses: actions/download-artifact@v4
-  #       with:
-  #         name: "windows-latest"
-  #     - name: "Dotnet NuGet Push"
-  #       run: |
-  #         Get-ChildItem .\ -Filter *.nupkg |
-  #         Where-Object { !$_.Name.Contains('preview') } |
-  #         ForEach-Object { dotnet nuget push $_ --source https://api.nuget.org/v3/index.json --skip-duplicate --api-key ${{secrets.NUGET_API_KEY}} }
-  #       shell: pwsh
+      - name: Dotnet Build
+        run: dotnet build hangfire-mcp-dotnet.slnx --configuration Release --no-restore -p:WarningLevel=0 /clp:ErrorsOnly
+        shell: pwsh
+
+      - name: Dotnet Test
+        run: >
+          dotnet test hangfire-mcp-dotnet.slnx
+          --configuration Release --no-build
+          --logger "trx"
+          --logger "GitHubActions"
+          --results-directory ./Artefacts
+          --collect:"XPlat Code Coverage"
+        shell: pwsh
+
+      - name: Generate Coverage Report
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          dotnet tool install -g dotnet-reportgenerator-globaltool
+          reportgenerator -reports:./Artefacts/**/coverage.cobertura.xml -targetdir:./Artefacts/coverage-report -reporttypes:"HtmlInline;MarkdownSummaryGithub;Cobertura"
+        shell: pwsh
+
+      - name: Publish Coverage Summary
+        if: matrix.os == 'ubuntu-latest'
+        run: cat ./Artefacts/coverage-report/SummaryGithub.md >> $GITHUB_STEP_SUMMARY
+        shell: bash
+
+      - name: Upload Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{matrix.os}}
+          path: ./Artefacts
+          if-no-files-found: ignore
+
+  pack:
+    name: Pack
+    needs: build
+    if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Dotnet Restore
+        run: dotnet restore hangfire-mcp-dotnet.slnx
+
+      - name: Dotnet Pack (Library)
+        run: >
+          dotnet pack src/Nall.Hangfire.Mcp/Nall.Hangfire.Mcp.csproj
+          --configuration Release --no-restore --output ./Artefacts
+          -p:WarningLevel=0 /clp:ErrorsOnly
+
+      - name: Dotnet Pack (Generator)
+        run: >
+          dotnet pack src/Nall.Hangfire.Mcp.Generator/Nall.Hangfire.Mcp.Generator.csproj
+          --configuration Release --no-restore --output ./Artefacts
+          -p:WarningLevel=0 /clp:ErrorsOnly
+
+      - name: Upload Packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: nupkg
+          path: ./Artefacts/*.nupkg
+
+  push-nuget:
+    name: Push NuGet
+    needs: pack
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    environment:
+      name: NuGet
+      url: https://www.nuget.org/packages/Nall.Hangfire.Mcp
+    steps:
+      - name: Download Packages
+        uses: actions/download-artifact@v4
+        with:
+          name: nupkg
+          path: ./Artefacts
+
+      - name: Install .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Dotnet NuGet Push
+        run: >
+          dotnet nuget push ./Artefacts/*.nupkg
+          --source https://api.nuget.org/v3/index.json
+          --api-key ${{ secrets.NUGET_API_KEY }}
+          --skip-duplicate

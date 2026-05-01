@@ -1,0 +1,5 @@
+@host = http://localhost:5000
+
+### List discovered jobs (recurring jobs in Hangfire storage)
+GET {{host}}/jobs
+Accept: application/json

@@ -1,49 +1,97 @@
 # Nall.Hangfire.Mcp
 
-Remote MCP server for [Hangfire](https://www.hangfire.io/) — exposes background jobs as first-class MCP tools, in-process with the Hangfire server.
+Remote MCP server for [Hangfire](https://www.hangfire.io/) — exposes background jobs as MCP tools, in-process with the Hangfire server.
 
-## Status
+## Design
 
-Early development. Successor to [`hangfire-mcp`](https://github.com/NikiforovAll/hangfire-mcp) (archived); the standalone/ad-hoc `Nall.HangfireMCP` `dotnet tool` remains available there for users on the original env-var design.
+- **In-process.** Runs inside the ASP.NET host that runs Hangfire. No out-of-process assembly loading.
+- **Remote.** Streamable HTTP endpoint at `/mcp`. Any MCP client (VS Code, Claude Desktop, custom agents) can connect.
+- **Zero ceremony.** No attributes, no shim interfaces — discovery reads what you already register with Hangfire.
+- **Schema from `MethodInfo`.** JSON Schema generated per method. Required vs. optional respects both C# defaults and nullable annotations (`int?`, `string?`).
 
-## Design at a glance
+## Getting started
 
-- **In-process.** MCP runs inside the same ASP.NET host that hosts the Hangfire server. Job types are already loaded; no out-of-process assembly loading.
-- **Remote.** Mounted as an HTTP/SSE endpoint at `/mcp` (`MapHangfireMcp`). Any MCP client (VS Code, Claude Desktop, custom agents) can connect across the network.
-- **Truly dynamic.** Discovery scans assemblies and exposes one MCP tool per discovered job method, with JSON Schema generated from `MethodInfo`. Catalog refresh emits `notifications/tools/list_changed`.
-- **Zero ceremony.** No marker attributes, no shim interfaces — your existing Hangfire jobs are exposed automatically.
+Install:
 
-## Quick start (target API)
+```bash
+dotnet add package Nall.Hangfire.Mcp
+```
+
+Minimum host setup — three lines on top of an existing Hangfire app:
 
 ```csharp
-var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddHangfireMcp();   // registers MCP server + JobCatalog
+var app = builder.Build();
+app.MapHangfireMcp("/mcp");          // streamable HTTP endpoint
+```
 
+Full minimal example:
+
+```csharp
+using Hangfire;
+using Nall.Hangfire.Mcp;
+
+var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddHangfire(cfg => cfg.UsePostgreSqlStorage(...));
 builder.Services.AddHangfireServer();
-builder.Services.AddHangfireMcp(opts =>
-{
-    opts.ScanAssemblies(typeof(IMyJob).Assembly);
-    // optional filter:
-    // opts.Where(t => t.IsInterface && t.Name.EndsWith("Job"));
-});
+builder.Services.AddHangfireMcp();
 
 var app = builder.Build();
 app.MapHangfireDashboard();
-app.MapHangfireMcp("/mcp").RequireAuthorization();
+app.MapHangfireMcp("/mcp");
+
+app.Services.GetRequiredService<IRecurringJobManager>()
+    .AddOrUpdate<IReportJob>("report.daily", j => j.GenerateAsync(2026, "pdf", null), Cron.Daily);
+
 app.Run();
 ```
+
+Every recurring job is now an MCP tool: `Run_report.daily` with a JSON Schema derived from `GenerateAsync`'s parameters.
 
 VS Code MCP config:
 
 ```json
 {
   "servers": {
-    "hangfire": {
-      "url": "https://your-host/mcp"
-    }
+    "hangfire": { "url": "https://your-host/mcp" }
   }
 }
 ```
+
+## Discovery sources
+
+| Source                       | What it sees                                                                                                                            | When to use                                                                                    |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `RecurringStorage` (default) | `RecurringJobDto.Job` from Hangfire storage.                                                                                            | Every recurring job is a tool.                                                                 |
+| `StaticManifest`             | Compile-time scan of `AddOrUpdate` / `Enqueue` / `Schedule` call sites via the optional `Nall.Hangfire.Mcp.Generator` source generator. | Expose helper methods you only ever one-shot enqueue, or jobs not yet registered as recurring. |
+| `All`                        | Union of both, deduped by `(DeclaringType, MethodInfo)`.                                                                                | Most apps.                                                                                     |
+
+Configure via `AddHangfireMcp`:
+
+```csharp
+builder.Services.AddHangfireMcp(o =>
+{
+    o.Sources = JobDiscoverySources.All;          // default: RecurringStorage
+    o.Filter  = rj => rj.Id.StartsWith("public."); // optional storage filter
+});
+```
+
+To populate the manifest, install the generator package in each project that contains Hangfire registration calls:
+
+```bash
+dotnet add package Nall.Hangfire.Mcp.Generator
+```
+
+## Parameter binding
+
+For each tool call:
+- C# default → used when the argument is omitted.
+- Nullable type (`T?` value or annotated reference) and no default → bound to `null` when omitted.
+- Otherwise required; missing argument returns an MCP error.
+
+## Sample
+
+`samples/Web` exercises overloads, complex objects, enums, collections, defaults, nullable optionals, and manifest-only one-shot jobs. `GET /jobs` lists the discovered catalog.
 
 ## License
 
