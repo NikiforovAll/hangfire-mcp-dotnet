@@ -1,5 +1,4 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
   <Sdk Name="Aspire.AppHost.Sdk" Version="13.2.4" />
 
   <PropertyGroup>
@@ -21,5 +20,4 @@
   <ItemGroup>
     <ProjectReference Include="..\Web\Web.csproj" />
   </ItemGroup>
-
 </Project>

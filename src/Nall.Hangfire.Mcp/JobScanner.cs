@@ -1,3 +1,4 @@
+using System.Reflection;
 using Hangfire;
 using Hangfire.Storage;
 using Nall.Hangfire.Mcp.Manifest;
@@ -15,7 +16,7 @@ public static class JobScanner
         ArgumentNullException.ThrowIfNull(storage);
 
         var results = new List<JobDescriptor>();
-        var seen = new HashSet<(Type, System.Reflection.MethodInfo)>();
+        var seen = new HashSet<MethodInfo>();
 
         if ((sources & JobDiscoverySources.RecurringStorage) != 0)
         {
@@ -30,7 +31,7 @@ public static class JobScanner
                 {
                     continue;
                 }
-                if (seen.Add((rj.Job.Type, rj.Job.Method)))
+                if (seen.Add(rj.Job.Method))
                 {
                     results.Add(new JobDescriptor(rj.Id, rj.Job.Type, rj.Job.Method));
                 }
@@ -41,7 +42,7 @@ public static class JobScanner
         {
             foreach (var d in JobManifestRegistry.AllDescriptors)
             {
-                if (seen.Add((d.DeclaringType, d.Method)))
+                if (seen.Add(d.Method))
                 {
                     results.Add(d);
                 }

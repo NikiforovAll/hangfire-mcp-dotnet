@@ -17,5 +17,16 @@ public sealed record JobDescriptor(string RecurringJobId, Type DeclaringType, Me
     private static string BuildToolName(string recurringJobId) => $"Run_{Sanitize(recurringJobId)}";
 
     private static string Sanitize(string s) =>
-        new(s.Select(c => char.IsLetterOrDigit(c) || c is '_' or '-' ? c : '_').ToArray());
+        string.Create(
+            s.Length,
+            s,
+            static (span, source) =>
+            {
+                for (var i = 0; i < source.Length; i++)
+                {
+                    var c = source[i];
+                    span[i] = char.IsLetterOrDigit(c) || c is '_' or '-' ? c : '_';
+                }
+            }
+        );
 }

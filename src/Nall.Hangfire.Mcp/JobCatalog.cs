@@ -1,3 +1,5 @@
+using System.Collections.Frozen;
+using System.Diagnostics.CodeAnalysis;
 using Hangfire;
 using Hangfire.Storage;
 using ModelContextProtocol.Protocol;
@@ -6,7 +8,7 @@ namespace Nall.Hangfire.Mcp;
 
 public sealed class JobCatalog
 {
-    private readonly Dictionary<string, JobDescriptor> _byToolName;
+    private readonly FrozenDictionary<string, JobDescriptor> _byToolName;
 
     public IReadOnlyList<JobDescriptor> Jobs { get; }
 
@@ -20,21 +22,22 @@ public sealed class JobCatalog
     {
         ArgumentNullException.ThrowIfNull(storage);
         Jobs = JobScanner.Scan(storage, sources, filter);
-        _byToolName = Jobs.ToDictionary(d => d.ToolName, StringComparer.Ordinal);
+        _byToolName = Jobs.ToFrozenDictionary(d => d.ToolName, StringComparer.Ordinal);
         ListToolsResult = new ListToolsResult
         {
             Tools = Jobs.Select(d => new Tool
                 {
                     Name = d.ToolName,
                     Description =
-                        $"Enqueue Hangfire job '{d.RecurringJobId}' "
-                        + $"({d.DeclaringType.Name}.{d.Method.Name}).",
+                        $"Enqueue Hangfire job '{d.RecurringJobId}' ({d.DeclaringType.Name}.{d.Method.Name}).",
                     InputSchema = JobInputSchema.Build(d.Method),
                 })
                 .ToList(),
         };
     }
 
-    public bool TryGetByToolName(string name, out JobDescriptor descriptor) =>
-        _byToolName.TryGetValue(name, out descriptor!);
+    public bool TryGetByToolName(
+        string name,
+        [MaybeNullWhen(false)] out JobDescriptor descriptor
+    ) => _byToolName.TryGetValue(name, out descriptor);
 }
