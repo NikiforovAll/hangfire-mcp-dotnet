@@ -48,23 +48,9 @@ jobs:
         run: >
           dotnet test hangfire-mcp-dotnet.slnx
           --configuration Release --no-build
-          --logger "trx"
           --logger "GitHubActions;summary.includePassedTests=false;summary.includeSkippedTests=true"
           --results-directory ./Artefacts
-          --collect:"XPlat Code Coverage"
         shell: pwsh
-
-      - name: Generate Coverage Report
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          dotnet tool install -g dotnet-reportgenerator-globaltool
-          reportgenerator -reports:./Artefacts/**/coverage.cobertura.xml -targetdir:./Artefacts/coverage-report -reporttypes:"HtmlInline;MarkdownSummaryGithub;Cobertura"
-        shell: pwsh
-
-      - name: Publish Coverage Summary
-        if: matrix.os == 'ubuntu-latest'
-        run: cat ./Artefacts/coverage-report/SummaryGithub.md >> $GITHUB_STEP_SUMMARY
-        shell: bash
 
       - name: Upload Test Results
         if: always()

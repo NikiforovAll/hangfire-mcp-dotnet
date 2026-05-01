@@ -1,15 +1,31 @@
 <Project>
   <PropertyGroup>
+    <Title>Nall.Hangfire.Mcp</Title>
+    <Authors>Nikiforov Oleksii</Authors>
+    <Copyright>Copyright (c) Oleksii Nikiforov</Copyright>
+    <Description>Remote MCP server for Hangfire — exposes background jobs as MCP tools in-process with the worker. Includes an optional Roslyn source generator that builds a static job manifest from AddOrUpdate/Enqueue/Schedule call sites.</Description>
     <PackageProjectUrl>https://github.com/NikiforovAll/hangfire-mcp-dotnet</PackageProjectUrl>
     <RepositoryUrl>https://github.com/NikiforovAll/hangfire-mcp-dotnet</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageIcon>logo.png</PackageIcon>
-    <Authors>Nikiforov Oleksii</Authors>
-    <Description>Remote MCP server for Hangfire — exposes background jobs as MCP tools in-process with the worker.</Description>
-    <PackageTags>mcp;hangfire;ai;agent</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageTags>mcp;model-context-protocol;hangfire;background-jobs;ai;agent;dotnet</PackageTags>
+    <PackageReleaseNotes>https://github.com/NikiforovAll/hangfire-mcp-dotnet/releases</PackageReleaseNotes>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
   </PropertyGroup>
+
+  <PropertyGroup>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All" />
+  </ItemGroup>
 
   <PropertyGroup>
     <MinVerDefaultPreReleaseIdentifiers>preview.0</MinVerDefaultPreReleaseIdentifiers>
