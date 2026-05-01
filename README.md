@@ -1,5 +1,10 @@
 # Nall.Hangfire.Mcp
 
+[![NuGet](https://img.shields.io/nuget/v/Nall.Hangfire.Mcp)](https://www.nuget.org/packages/Nall.Hangfire.Mcp)
+[![NuGet Downloads](https://img.shields.io/nuget/dt/Nall.Hangfire.Mcp)](https://www.nuget.org/packages/Nall.Hangfire.Mcp)
+[![Build](https://github.com/NikiforovAll/hangfire-mcp-dotnet/actions/workflows/build.yml/badge.svg)](https://github.com/NikiforovAll/hangfire-mcp-dotnet/actions/workflows/build.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE.md)
+
 Remote MCP server for [Hangfire](https://www.hangfire.io/) — exposes background jobs as MCP tools, in-process with the Hangfire server.
 
 ## Design
