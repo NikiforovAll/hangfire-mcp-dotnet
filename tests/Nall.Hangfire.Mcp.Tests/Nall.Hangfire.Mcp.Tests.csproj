@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <PackageReference Include="coverlet.collector" Version="6.0.4" />
+    <PackageReference Include="GitHubActionsTestLogger" Version="2.4.1" />
     <PackageReference Include="Hangfire.InMemory" Version="1.0.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageReference Include="Shouldly" Version="4.3.0" />

@@ -49,7 +49,7 @@ jobs:
           dotnet test hangfire-mcp-dotnet.slnx
           --configuration Release --no-build
           --logger "trx"
-          --logger "GitHubActions"
+          --logger "GitHubActions;summary.includePassedTests=false;summary.includeSkippedTests=true"
           --results-directory ./Artefacts
           --collect:"XPlat Code Coverage"
         shell: pwsh
