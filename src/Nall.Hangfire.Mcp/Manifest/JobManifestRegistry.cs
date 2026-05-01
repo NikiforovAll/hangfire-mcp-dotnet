@@ -7,7 +7,6 @@ public static class JobManifestRegistry
 {
     private static readonly ConcurrentDictionary<Assembly, IReadOnlyList<JobDescriptor>> Sources =
         new();
-    private static IReadOnlyList<JobDescriptor>? s_flattened;
 
     public static void Add(
         Assembly source,
@@ -40,15 +39,10 @@ public static class JobManifestRegistry
         }
 
         Sources[source] = resolved;
-        s_flattened = null;
     }
 
     public static IReadOnlyList<JobDescriptor> AllDescriptors =>
-        s_flattened ??= Sources.Values.SelectMany(v => v).ToList();
+        Sources.Values.SelectMany(v => v).ToList();
 
-    internal static void Clear()
-    {
-        Sources.Clear();
-        s_flattened = null;
-    }
+    internal static void Clear() => Sources.Clear();
 }
