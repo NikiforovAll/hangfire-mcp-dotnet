@@ -31,6 +31,11 @@ public static class JobInputSchema
             }
 
             var schema = JsonSchemaExporter.GetJsonSchemaAsNode(s_schemaOptions, p.ParameterType);
+            var description = JobDescriptionResolver.ResolveParameter(p);
+            if (!string.IsNullOrEmpty(description) && schema is JsonObject schemaObject)
+            {
+                schemaObject["description"] = description;
+            }
             properties[p.Name] = schema;
 
             if (!p.HasDefaultValue && !ParameterNullability.IsOptional(p, nullability))

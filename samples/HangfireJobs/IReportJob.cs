@@ -1,10 +1,17 @@
+using System.ComponentModel;
 using Microsoft.Extensions.Logging;
 
 namespace HangfireJobs;
 
 public interface IReportJob
 {
-    Task GenerateAsync(int year, string format = "pdf", DateTimeOffset? since = null);
+    [Description("Generate the annual financial report and persist it to the report store.")]
+    Task GenerateAsync(
+        [Description("Calendar year of the report (e.g. 2026).")] int year,
+        [Description("Output file format. Supported: pdf, html, csv.")] string format = "pdf",
+        [Description("Optional cutoff: only include data on or after this timestamp.")]
+            DateTimeOffset? since = null
+    );
 
     Task<int> PreviewAsync(int year);
 }

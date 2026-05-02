@@ -55,6 +55,41 @@ public class JobCatalogTests
     }
 
     [Fact]
+    public void Tool_description_falls_back_when_no_attribute_present()
+    {
+        var (storage, manager) = NewStorage();
+        manager.AddOrUpdate<UndescribedJob>("plain", j => j.RunAsync("a"), Cron.Daily());
+
+        var catalog = new JobCatalog(storage);
+
+        catalog
+            .ListToolsResult.Tools[0]
+            .Description.ShouldBe("Enqueue Hangfire job 'plain' (UndescribedJob.RunAsync).");
+    }
+
+    [Fact]
+    public void Tool_description_uses_interface_attribute_when_impl_undecorated()
+    {
+        var (storage, manager) = NewStorage();
+        manager.AddOrUpdate<DescribedJob>("desc", j => j.RunAsync("x", 1), Cron.Daily());
+
+        var catalog = new JobCatalog(storage);
+
+        catalog.ListToolsResult.Tools[0].Description.ShouldBe("Iface-level method description.");
+    }
+
+    [Fact]
+    public void Tool_description_uses_direct_attribute_on_method()
+    {
+        var (storage, manager) = NewStorage();
+        manager.AddOrUpdate<DirectlyDescribedJob>("direct", j => j.RunAsync("x"), Cron.Daily());
+
+        var catalog = new JobCatalog(storage);
+
+        catalog.ListToolsResult.Tools[0].Description.ShouldBe("Direct method description.");
+    }
+
+    [Fact]
     public void Snapshot_does_not_observe_jobs_added_after_construction()
     {
         var (storage, manager) = NewStorage();

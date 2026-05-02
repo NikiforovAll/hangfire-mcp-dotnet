@@ -75,4 +75,50 @@ public class JobInputSchemaTests
     {
         Should.Throw<ArgumentNullException>(() => JobInputSchema.Build(null!));
     }
+
+    [Fact]
+    public void Build_emits_parameter_description_from_direct_attribute()
+    {
+        var method = typeof(DirectlyDescribedJob).GetMethod(nameof(DirectlyDescribedJob.RunAsync))!;
+
+        var schema = JobInputSchema.Build(method);
+        var doc = JsonDocument.Parse(schema.GetRawText()).RootElement;
+
+        doc.GetProperty("properties")
+            .GetProperty("value")
+            .GetProperty("description")
+            .GetString()
+            .ShouldBe("Direct param description.");
+    }
+
+    [Fact]
+    public void Build_emits_parameter_description_from_interface_fallback()
+    {
+        var method = typeof(DescribedJob).GetMethod(nameof(DescribedJob.RunAsync))!;
+
+        var schema = JobInputSchema.Build(method);
+        var doc = JsonDocument.Parse(schema.GetRawText()).RootElement;
+
+        var props = doc.GetProperty("properties");
+        props
+            .GetProperty("name")
+            .GetProperty("description")
+            .GetString()
+            .ShouldBe("Iface-level param description.");
+        props.GetProperty("count").TryGetProperty("description", out _).ShouldBeFalse();
+    }
+
+    [Fact]
+    public void Build_omits_description_when_no_attribute()
+    {
+        var method = typeof(UndescribedJob).GetMethod(nameof(UndescribedJob.RunAsync))!;
+
+        var schema = JobInputSchema.Build(method);
+        var doc = JsonDocument.Parse(schema.GetRawText()).RootElement;
+
+        doc.GetProperty("properties")
+            .GetProperty("value")
+            .TryGetProperty("description", out _)
+            .ShouldBeFalse();
+    }
 }

@@ -12,5 +12,5 @@ Hangfire MCP capabilities (mindmap):
   - `hangfire_delete_jobs` — Bulk delete jobs by explicit id list OR filter (exactly one). RECOMMENDED: pass dryRun:true first to preview matches before acting. Capped by MaintenanceMaxBulkSize.
   - `hangfire_requeue_jobs` — Bulk requeue jobs by explicit id list OR filter (exactly one). RECOMMENDED: pass dryRun:true first to preview matches before acting. Capped by MaintenanceMaxBulkSize.
 - Run jobs (tools)
-  - `Run_nightly` — Enqueue Hangfire job 'nightly' (ReportJob.GenerateAsync).
-  - `Run_send-welcome` — Enqueue Hangfire job 'send-welcome' (IEmailJob.SendAsync).
+  - `Run_nightly` — Generate the annual report.
+  - `Run_send-welcome` — Send a transactional email to the given recipient.
