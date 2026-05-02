@@ -5,7 +5,7 @@ Hangfire MCP capabilities (mindmap):
 - Maintenance tools
   - `hangfire_get_statistics` — Return Hangfire global statistics: counts for Enqueued/Failed/Processing/Scheduled/Succeeded/Deleted/Recurring/Retries plus Servers and Queues.
   - `hangfire_list_queues` — List Hangfire queues with their lengths and a sample of first enqueued jobs.
-  - `hangfire_list_jobs` — Page Hangfire jobs by state with optional filter. Use this to discover ids before bulk delete/requeue.
+  - `hangfire_list_jobs` — Page Hangfire jobs with optional state and filter. Omit 'state' to query across all states. Use this to discover ids before bulk delete/requeue.
   - `hangfire_get_job` — Return full details for a single Hangfire job: type, method, args, properties, and state history.
   - `hangfire_delete_job` — Move a single job to the Deleted state.
   - `hangfire_requeue_job` — Requeue a single job back to Enqueued (covers retry of Failed jobs).

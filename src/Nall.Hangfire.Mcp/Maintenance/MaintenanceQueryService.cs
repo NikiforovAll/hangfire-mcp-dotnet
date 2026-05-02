@@ -25,7 +25,52 @@ public sealed class MaintenanceQueryService
 
     public JobDetailsDto? GetJob(string id) => Api.JobDetails(id);
 
-    public ScanResult ListJobs(JobStateKind state, JobFilter? filter, int from, int count)
+    public ScanResult ListJobs(JobStateKind? state, JobFilter? filter, int from, int count)
+    {
+        if (state is { } s)
+        {
+            return ListJobsForState(s, filter, from, count);
+        }
+
+        var matches = new List<JobMatch>(count);
+        var scanned = 0;
+        long total = 0;
+        var taken = 0;
+        var cursorRemaining = from;
+        var truncated = false;
+
+        foreach (var kind in AllStates)
+        {
+            var stateCount = StateCount(kind);
+            total += stateCount;
+
+            if (taken >= count)
+            {
+                truncated = truncated || stateCount > 0;
+                continue;
+            }
+
+            if (cursorRemaining >= stateCount)
+            {
+                cursorRemaining -= (int)stateCount;
+                continue;
+            }
+
+            var slice = ListJobsForState(kind, filter, cursorRemaining, count - taken);
+            cursorRemaining = 0;
+            scanned += slice.Scanned;
+            matches.AddRange(slice.Matches);
+            taken = matches.Count;
+            if (slice.Truncated)
+            {
+                truncated = true;
+            }
+        }
+
+        return new ScanResult(matches, scanned, total, truncated, from + scanned);
+    }
+
+    private ScanResult ListJobsForState(JobStateKind state, JobFilter? filter, int from, int count)
     {
         var matches = new List<JobMatch>(count);
         var scanned = 0;
@@ -66,8 +111,22 @@ public sealed class MaintenanceQueryService
     public ScanResult ScanByFilter(JobFilter filter, int max)
     {
         ArgumentNullException.ThrowIfNull(filter);
-        return ListJobs(filter.State, filter, 0, max);
+        if (filter.State is null)
+        {
+            throw new ArgumentException("'filter.state' is required for bulk operations.");
+        }
+        return ListJobsForState(filter.State.Value, filter, 0, max);
     }
+
+    private static readonly JobStateKind[] AllStates =
+    {
+        JobStateKind.Enqueued,
+        JobStateKind.Processing,
+        JobStateKind.Scheduled,
+        JobStateKind.Failed,
+        JobStateKind.Succeeded,
+        JobStateKind.Deleted,
+    };
 
     private long StateCount(JobStateKind state) =>
         state switch
