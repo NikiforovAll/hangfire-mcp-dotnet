@@ -49,17 +49,17 @@ public static class HangfireMcpServiceCollectionExtensions
             .WithCallToolHandler(
                 static (request, ct) =>
                 {
-                    var catalog = request.Services!.GetRequiredService<JobCatalog>();
-                    var scheduler =
-                        request.Services!.GetRequiredService<HangfireDynamicScheduler>();
-                    var maintenance = request.Services!.GetRequiredService<MaintenanceDispatcher>();
-                    return ValueTask.FromResult(
-                        HangfireMcpHandlers.InvokeTool(
-                            catalog,
-                            scheduler,
-                            maintenance,
-                            request.Params
-                        )
+                    var services = request.Services!;
+                    var catalog = services.GetRequiredService<JobCatalog>();
+                    var scheduler = services.GetRequiredService<HangfireDynamicScheduler>();
+                    var maintenance = services.GetRequiredService<MaintenanceDispatcher>();
+                    return HangfireMcpHandlers.InvokeToolAsync(
+                        catalog,
+                        scheduler,
+                        maintenance,
+                        request.Params,
+                        services,
+                        ct
                     );
                 }
             )

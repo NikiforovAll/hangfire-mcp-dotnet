@@ -21,4 +21,8 @@
   <ItemGroup>
     <PackageReference Include="MinVer" Version="6.0.0" PrivateAssets="all" />
   </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Nall.Hangfire.Mcp.Tests" />
+  </ItemGroup>
 </Project>

@@ -1,7 +1,9 @@
 using System.Text.Json;
 using Hangfire;
 using Hangfire.InMemory;
+using Microsoft.Extensions.DependencyInjection;
 using ModelContextProtocol.Protocol;
+using Nall.Hangfire.Mcp.Authorization;
 using Nall.Hangfire.Mcp.Maintenance;
 using Nall.Hangfire.Mcp.Tests.Fixtures;
 using Shouldly;
@@ -124,6 +126,44 @@ public class HangfireMcpHandlersTests
             .Content.ShouldHaveSingleItem()
             .ShouldBeOfType<TextContentBlock>()
             .Text.ShouldContain("year");
+    }
+
+    [Fact]
+    public void InvokeTool_returns_forbidden_when_filter_throws_authorization_exception()
+    {
+        var (catalog, scheduler, maintenance) = Setup(m =>
+            m.AddOrUpdate<ReportJob>("nightly", j => j.GenerateAsync(2026, "pdf"), Cron.Daily())
+        );
+        var sc = new ServiceCollection();
+        sc.AddSingleton<IJobInvocationFilter>(new ThrowFilter());
+        var services = sc.BuildServiceProvider();
+
+        var result = HangfireMcpHandlers.InvokeTool(
+            catalog,
+            scheduler,
+            maintenance,
+            new CallToolRequestParams
+            {
+                Name = "Run_nightly",
+                Arguments = ParseArgs("""{"year": 2027}"""),
+            },
+            services
+        );
+
+        result.IsError.ShouldBe(true);
+        result
+            .Content.ShouldHaveSingleItem()
+            .ShouldBeOfType<TextContentBlock>()
+            .Text.ShouldContain("nope");
+    }
+
+    private sealed class ThrowFilter : IJobInvocationFilter
+    {
+        public ValueTask<string> InvokeAsync(
+            JobInvocationContext context,
+            JobInvocationDelegate next,
+            CancellationToken cancellationToken
+        ) => throw new JobAuthorizationException("Forbidden: nope");
     }
 
     [Fact]

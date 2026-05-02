@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Logging;
 
 namespace HangfireJobs;
@@ -6,6 +7,7 @@ namespace HangfireJobs;
 public interface IReportJob
 {
     [Description("Generate the annual financial report and persist it to the report store.")]
+    [Authorize(Policy = "jobs:run")]
     Task GenerateAsync(
         [Description("Calendar year of the report (e.g. 2026).")] int year,
         [Description("Output file format. Supported: pdf, html, csv.")] string format = "pdf",
