@@ -1,10 +1,27 @@
 using ModelContextProtocol.Protocol;
 using Nall.Hangfire.Mcp.Maintenance;
+using Nall.Hangfire.Mcp.Prompts;
 
 namespace Nall.Hangfire.Mcp;
 
 public static class HangfireMcpHandlers
 {
+    public static ListPromptsResult BuildListPromptsResult() =>
+        new() { Prompts = MaintenancePrompts.All.ToList() };
+
+    public static GetPromptResult GetPrompt(JobCatalog catalog, GetPromptRequestParams? @params)
+    {
+        ArgumentNullException.ThrowIfNull(catalog);
+        var name =
+            @params?.Name
+            ?? throw new ArgumentException("Prompt name is required.", nameof(@params));
+        if (!MaintenancePrompts.IsKnown(name))
+        {
+            throw new ArgumentException($"Unknown prompt '{name}'.", nameof(@params));
+        }
+        return MaintenancePrompts.Render(name, catalog);
+    }
+
     public static ListToolsResult BuildListToolsResult(JobCatalog catalog)
     {
         ArgumentNullException.ThrowIfNull(catalog);
