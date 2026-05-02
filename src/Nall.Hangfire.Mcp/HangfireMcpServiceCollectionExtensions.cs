@@ -62,6 +62,19 @@ public static class HangfireMcpServiceCollectionExtensions
                         )
                     );
                 }
+            )
+            .WithListPromptsHandler(
+                static (request, ct) =>
+                    ValueTask.FromResult(HangfireMcpHandlers.BuildListPromptsResult())
+            )
+            .WithGetPromptHandler(
+                static (request, ct) =>
+                {
+                    var catalog = request.Services!.GetRequiredService<JobCatalog>();
+                    return ValueTask.FromResult(
+                        HangfireMcpHandlers.GetPrompt(catalog, request.Params)
+                    );
+                }
             );
     }
 }
