@@ -1,0 +1,21 @@
+{
+  "realm": "HangfireMcp",
+  "users": [
+    {
+      "username": "test",
+      "firstName": "Test",
+      "lastName": "User",
+      "email": "test@hangfire.local",
+      "emailVerified": true,
+      "enabled": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "test",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["default-roles-hangfiremcp"]
+    }
+  ]
+}
