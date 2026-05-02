@@ -5,7 +5,7 @@ namespace Nall.Hangfire.Mcp.Manifest;
 
 public static class JobManifestRegistry
 {
-    private static readonly ConcurrentDictionary<Assembly, IReadOnlyList<JobDescriptor>> Sources =
+    private static readonly ConcurrentDictionary<Assembly, IReadOnlyList<JobDescriptor>> s_sources =
         new();
 
     public static void Add(
@@ -38,11 +38,11 @@ public static class JobManifestRegistry
             resolved.Add(JobDescriptor.FromManifest(type, info));
         }
 
-        Sources[source] = resolved;
+        s_sources[source] = resolved;
     }
 
     public static IReadOnlyList<JobDescriptor> AllDescriptors =>
-        Sources.Values.SelectMany(v => v).ToList();
+        s_sources.Values.SelectMany(v => v).ToList();
 
-    internal static void Clear() => Sources.Clear();
+    internal static void Clear() => s_sources.Clear();
 }

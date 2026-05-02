@@ -10,7 +10,7 @@ namespace Nall.Hangfire.Mcp.Generator;
 [Generator(LanguageNames.CSharp)]
 public sealed class HangfireRegistrationGenerator : IIncrementalGenerator
 {
-    private static readonly HashSet<string> RegistrationMethodNames = new(
+    private static readonly HashSet<string> s_registrationMethodNames = new(
         System.StringComparer.Ordinal
     )
     {
@@ -21,7 +21,7 @@ public sealed class HangfireRegistrationGenerator : IIncrementalGenerator
         "ContinueWith",
     };
 
-    private static readonly HashSet<string> HangfireContainingTypes = new(
+    private static readonly HashSet<string> s_hangfireContainingTypes = new(
         System.StringComparer.Ordinal
     )
     {
@@ -82,7 +82,7 @@ public sealed class HangfireRegistrationGenerator : IIncrementalGenerator
         {
             return false;
         }
-        return RegistrationMethodNames.Contains(name);
+        return s_registrationMethodNames.Contains(name);
     }
 
     private static Entry? Extract(GeneratorSyntaxContext ctx)
@@ -97,7 +97,7 @@ public sealed class HangfireRegistrationGenerator : IIncrementalGenerator
         }
 
         var containing = method.ContainingType?.ToDisplayString();
-        if (containing is null || !HangfireContainingTypes.Contains(containing))
+        if (containing is null || !s_hangfireContainingTypes.Contains(containing))
         {
             return null;
         }

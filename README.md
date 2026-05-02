@@ -87,6 +87,36 @@ To populate the manifest, install the generator package in each project that con
 dotnet add package Nall.Hangfire.Mcp.Generator
 ```
 
+## Built-in maintenance tools
+
+Every MCP server hosted by `AddHangfireMcp()` also exposes a fixed set of `hangfire_*` tools for inspecting and managing jobs alongside the dynamic `Run_*` tools:
+
+| Tool                      | Purpose                                                                                            |
+| ------------------------- | -------------------------------------------------------------------------------------------------- |
+| `hangfire_get_statistics` | Global counters: Enqueued/Failed/Processing/Scheduled/Succeeded/Deleted/Recurring/Retries/Servers. |
+| `hangfire_list_queues`    | Per-queue length + sample of first enqueued jobs.                                                  |
+| `hangfire_list_jobs`      | Page jobs by `state` with optional filter. Use this to discover ids before bulk ops.               |
+| `hangfire_get_job`        | Full details + state history for one id.                                                           |
+| `hangfire_delete_job`     | Move one job to Deleted.                                                                           |
+| `hangfire_requeue_job`    | Requeue one job (covers retry of Failed).                                                          |
+| `hangfire_delete_jobs`    | Bulk delete by `ids` **or** `filter` (exactly one).                                                |
+| `hangfire_requeue_jobs`   | Bulk requeue by `ids` **or** `filter`.                                                             |
+
+Filter shape (used by `list_jobs`, `delete_jobs`, `requeue_jobs`):
+
+```json
+{
+  "state": "Failed",
+  "queue": "default",
+  "jobType": "ReportJob",
+  "method": "Generate",
+  "messageContains": "timeout",
+  "exceptionContains": "SqlException"
+}
+```
+
+`jobType` and `method` are case-insensitive substring matches. `messageContains` / `exceptionContains` are most useful for `Failed`.
+
 ## Parameter binding
 
 For each tool call:
