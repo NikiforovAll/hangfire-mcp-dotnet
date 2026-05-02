@@ -124,9 +124,22 @@ For each tool call:
 - Nullable type (`T?` value or annotated reference) and no default → bound to `null` when omitted.
 - Otherwise required; missing argument returns an MCP error.
 
+## Authentication
+
+`MapHangfireMcp` returns `IEndpointConventionBuilder` — the library is auth-agnostic. Chain any ASP.NET Core auth scheme:
+
+```csharp
+app.MapHangfireMcp("/mcp")
+   .RequireAuthorization(p => p.RequireAuthenticatedUser()
+       .AddAuthenticationSchemes(McpAuthenticationDefaults.AuthenticationScheme));
+```
+
+- **OAuth 2.1 / OIDC** — `samples/Web` wires Keycloak + JwtBearer + `AddMcp()` from `ModelContextProtocol.AspNetCore.Authentication` to advertise RFC 9728 protected-resource-metadata. End-to-end flow, standards, and gotchas: [docs/auth.md](docs/auth.md).
+- **API keys / custom schemes** — nothing MCP-specific required. Implement an `AuthenticationHandler<T>`, register it, and pass its scheme to `RequireAuthorization` above. The `Run_*` and `hangfire_*` tools work the same regardless of how the principal got there.
+
 ## Sample
 
-`samples/Web` exercises overloads, complex objects, enums, collections, defaults, nullable optionals, and manifest-only one-shot jobs. `GET /jobs` lists the discovered catalog.
+[`samples/Web`](samples/Web/Program.cs) exercises overloads, complex objects, enums, collections, defaults, nullable optionals, and manifest-only one-shot jobs. `GET /jobs` lists the discovered catalog.
 
 ## License
 

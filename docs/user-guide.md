@@ -63,12 +63,12 @@ After a few seconds all resources become healthy:
 
 ![Aspire dashboard resources](assets/aspire-dashboard-resources.png)
 
-| Resource | Role |
-|---|---|
-| `server` | ASP.NET host — runs Hangfire server and exposes `/mcp` |
-| `postgres-server` / `hangfire` | Hangfire PostgreSQL storage |
-| `inspector` | [MCP Inspector](https://github.com/modelcontextprotocol/inspector) pre-wired to `/mcp` |
-| `hangfire-mcp` | Aspire-managed MCP proxy sidecar |
+| Resource                       | Role                                                                                   |
+| ------------------------------ | -------------------------------------------------------------------------------------- |
+| `server`                       | ASP.NET host — runs Hangfire server and exposes `/mcp`                                 |
+| `postgres-server` / `hangfire` | Hangfire PostgreSQL storage                                                            |
+| `inspector`                    | [MCP Inspector](https://github.com/modelcontextprotocol/inspector) pre-wired to `/mcp` |
+| `hangfire-mcp`                 | Aspire-managed MCP proxy sidecar                                                       |
 
 ---
 
@@ -76,15 +76,15 @@ After a few seconds all resources become healthy:
 
 `samples/HangfireJobs` defines six job interfaces that cover the full range of supported parameter shapes:
 
-| Recurring ID | Interface | Method | Parameters |
-|---|---|---|---|
-| `time.execute` | `ITimeJob` | `ExecuteAsync()` | none |
-| `send-message.text` | `ISendMessageJob` | `ExecuteAsync(string text)` | one required string |
-| `send-message.envelope` | `ISendMessageJob` | `ExecuteAsync(Message message)` | one required complex object |
-| `report.generate` | `IReportJob` | `GenerateAsync(int year, string format = "pdf", DateTimeOffset? since = null)` | one required + two optional |
-| `data.export` | `IDataExportJob` | `ExportAsync(ExportFormat format, IReadOnlyList<string> tables)` | enum + string array |
-| `maint.rebuild-indexes` | `MaintenanceJob` | `RebuildIndexesAsync(string schema = "public")` | one optional with default |
-| `notify.dispatch` | `INotificationJob` | `NotifyAsync(string channel, string? message, int? priority)` | required + nullable optionals |
+| Recurring ID            | Interface          | Method                                                                         | Parameters                    |
+| ----------------------- | ------------------ | ------------------------------------------------------------------------------ | ----------------------------- |
+| `time.execute`          | `ITimeJob`         | `ExecuteAsync()`                                                               | none                          |
+| `send-message.text`     | `ISendMessageJob`  | `ExecuteAsync(string text)`                                                    | one required string           |
+| `send-message.envelope` | `ISendMessageJob`  | `ExecuteAsync(Message message)`                                                | one required complex object   |
+| `report.generate`       | `IReportJob`       | `GenerateAsync(int year, string format = "pdf", DateTimeOffset? since = null)` | one required + two optional   |
+| `data.export`           | `IDataExportJob`   | `ExportAsync(ExportFormat format, IReadOnlyList<string> tables)`               | enum + string array           |
+| `maint.rebuild-indexes` | `MaintenanceJob`   | `RebuildIndexesAsync(string schema = "public")`                                | one optional with default     |
+| `notify.dispatch`       | `INotificationJob` | `NotifyAsync(string channel, string? message, int? priority)`                  | required + nullable optionals |
 
 Plus three **manifest-only** tools (discovered from one-shot `Enqueue` calls by the source generator):
 
@@ -162,11 +162,11 @@ Click any job to inspect its arguments, state transitions, and timing:
 
 ## Discovery sources
 
-| Source | What it discovers | When to use |
-|---|---|---|
-| `RecurringStorage` (default) | Jobs registered with `AddOrUpdate` (read from storage at startup) | Most apps — zero config |
-| `StaticManifest` | Jobs scanned at compile time by the source generator | One-shot `Enqueue` / `Schedule` jobs, or offline manifest without running Hangfire storage |
-| `All` | Union, deduplicated by `(DeclaringType, MethodInfo)` | When you want both |
+| Source                       | What it discovers                                                 | When to use                                                                                |
+| ---------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `RecurringStorage` (default) | Jobs registered with `AddOrUpdate` (read from storage at startup) | Most apps — zero config                                                                    |
+| `StaticManifest`             | Jobs scanned at compile time by the source generator              | One-shot `Enqueue` / `Schedule` jobs, or offline manifest without running Hangfire storage |
+| `All`                        | Union, deduplicated by `(DeclaringType, MethodInfo)`              | When you want both                                                                         |
 
 ```csharp
 builder.Services.AddHangfireMcp(o => o.Sources = JobDiscoverySources.All);
@@ -176,16 +176,16 @@ builder.Services.AddHangfireMcp(o => o.Sources = JobDiscoverySources.All);
 
 ## Parameter schema rules
 
-| C# signature | JSON Schema |
-|---|---|
-| `string name` | required string |
-| `string format = "pdf"` | optional string (default applied server-side) |
-| `string? tag` | optional string (nullable reference) |
-| `int? priority` | optional integer (nullable value type) |
-| `ExportFormat format` | required string enum (`"Csv"`, `"Json"`, `"Parquet"`) |
-| `IReadOnlyList<string> tables` | required array of strings |
-| `Message message` | required object with inferred JSON Schema |
-| `DateTimeOffset? since` | optional string (ISO 8601) |
+| C# signature                   | JSON Schema                                           |
+| ------------------------------ | ----------------------------------------------------- |
+| `string name`                  | required string                                       |
+| `string format = "pdf"`        | optional string (default applied server-side)         |
+| `string? tag`                  | optional string (nullable reference)                  |
+| `int? priority`                | optional integer (nullable value type)                |
+| `ExportFormat format`          | required string enum (`"Csv"`, `"Json"`, `"Parquet"`) |
+| `IReadOnlyList<string> tables` | required array of strings                             |
+| `Message message`              | required object with inferred JSON Schema             |
+| `DateTimeOffset? since`        | optional string (ISO 8601)                            |
 
 ---
 

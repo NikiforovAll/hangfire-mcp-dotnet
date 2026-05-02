@@ -15,6 +15,7 @@
     <PackageReference Include="Aspire.Hosting.AppHost" Version="13.2.4" />
     <PackageReference Include="Aspire.Hosting.PostgreSQL" Version="13.2.4" />
     <PackageReference Include="CommunityToolkit.Aspire.Hosting.McpInspector" Version="13.1.1" />
+    <PackageReference Include="Keycloak.AuthServices.Aspire.Hosting" Version="0.2.0" />
   </ItemGroup>
 
   <ItemGroup>
