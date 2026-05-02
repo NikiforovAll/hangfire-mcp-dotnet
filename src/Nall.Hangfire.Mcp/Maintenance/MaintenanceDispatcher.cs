@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using ModelContextProtocol.Protocol;
 
 namespace Nall.Hangfire.Mcp.Maintenance;
@@ -8,6 +9,7 @@ public sealed class MaintenanceDispatcher
     private static readonly JsonSerializerOptions s_json = new(JsonSerializerDefaults.Web)
     {
         WriteIndented = false,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
     };
 
     private readonly MaintenanceQueryService _query;
@@ -54,9 +56,7 @@ public sealed class MaintenanceDispatcher
 
     private CallToolResult HandleListJobs(IReadOnlyDictionary<string, JsonElement>? args)
     {
-        var state =
-            ReadEnum<JobStateKind>(args, "state")
-            ?? throw new ArgumentException("'state' is required.");
+        var state = ReadEnum<JobStateKind>(args, "state");
         var filter = ReadFilter(args, "filter", state);
         var from = ReadInt(args, "from") ?? 0;
         var count = ReadInt(args, "count") ?? 50;
@@ -145,10 +145,7 @@ public sealed class MaintenanceDispatcher
         {
             return null;
         }
-        var filterState =
-            ReadEnum<JobStateKind>(el, "state")
-            ?? state
-            ?? throw new ArgumentException("'filter.state' is required.");
+        var filterState = ReadEnum<JobStateKind>(el, "state") ?? state;
         return new JobFilter
         {
             State = filterState,

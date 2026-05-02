@@ -12,7 +12,7 @@ public enum JobStateKind
 
 public sealed record JobFilter
 {
-    public JobStateKind State { get; init; }
+    public JobStateKind? State { get; init; }
     public string? Queue { get; init; }
     public string? JobType { get; init; }
     public string? Method { get; init; }

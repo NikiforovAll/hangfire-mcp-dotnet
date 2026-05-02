@@ -47,7 +47,7 @@ Conventions: `-alpha.N` (early), `-beta.N` (feature-complete), `-rc.N` (release 
 
 Install:
 
-```pwsh
+```bash
 dotnet add package Nall.Hangfire.Mcp --prerelease
 # or pin:
 dotnet add package Nall.Hangfire.Mcp --version 1.2.0-alpha.1
@@ -63,13 +63,13 @@ Run the **Build** workflow via `workflow_dispatch`. It packs and uploads artifac
 
 ## Local pack
 
-```pwsh
+```bash
 dotnet pack src/Nall.Hangfire.Mcp/Nall.Hangfire.Mcp.csproj --configuration Release -o ./Artefacts
 dotnet pack src/Nall.Hangfire.Mcp.Generator/Nall.Hangfire.Mcp.Generator.csproj --configuration Release -o ./Artefacts
 ```
 
 Override the version without tagging:
 
-```pwsh
+```bash
 dotnet pack src/Nall.Hangfire.Mcp/Nall.Hangfire.Mcp.csproj -c Release -o ./Artefacts -p:MinVerVersionOverride=1.2.3
 ```

@@ -7,6 +7,8 @@
 
 Remote MCP server for [Hangfire](https://www.hangfire.io/) — exposes background jobs as MCP tools, in-process with the Hangfire server.
 
+📖 **Documentation:** <https://nikiforovall.github.io/hangfire-mcp-dotnet/>
+
 ## Design
 
 - **In-process.** Runs inside the ASP.NET host that runs Hangfire. No out-of-process assembly loading.
@@ -134,7 +136,7 @@ app.MapHangfireMcp("/mcp")
        .AddAuthenticationSchemes(McpAuthenticationDefaults.AuthenticationScheme));
 ```
 
-- **OAuth 2.1 / OIDC** — `samples/Web` wires Keycloak + JwtBearer + `AddMcp()` from `ModelContextProtocol.AspNetCore.Authentication` to advertise RFC 9728 protected-resource-metadata. End-to-end flow, standards, and gotchas: [docs/auth.md](docs/auth.md).
+- **OAuth 2.1 / OIDC** — `samples/Web` wires Keycloak + JwtBearer + `AddMcp()` from `ModelContextProtocol.AspNetCore.Authentication` to advertise RFC 9728 protected-resource-metadata. End-to-end flow, standards, and gotchas: [docs/authentication.md](docs/authentication.md).
 - **API keys / custom schemes** — nothing MCP-specific required. Implement an `AuthenticationHandler<T>`, register it, and pass its scheme to `RequireAuthorization` above. The `Run_*` and `hangfire_*` tools work the same regardless of how the principal got there.
 
 ## Sample

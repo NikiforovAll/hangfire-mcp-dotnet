@@ -1,4 +1,5 @@
 using ModelContextProtocol.Protocol;
+using Nall.Hangfire.Mcp.Authorization;
 using Nall.Hangfire.Mcp.Maintenance;
 using Nall.Hangfire.Mcp.Prompts;
 
@@ -39,11 +40,13 @@ public static class HangfireMcpHandlers
         return new ListToolsResult { Tools = tools };
     }
 
-    public static CallToolResult InvokeTool(
+    public static async ValueTask<CallToolResult> InvokeToolAsync(
         JobCatalog catalog,
         HangfireDynamicScheduler scheduler,
         MaintenanceDispatcher maintenance,
-        CallToolRequestParams? @params
+        CallToolRequestParams? @params,
+        IServiceProvider? services = null,
+        CancellationToken cancellationToken = default
     )
     {
         ArgumentNullException.ThrowIfNull(catalog);
@@ -60,19 +63,43 @@ public static class HangfireMcpHandlers
             return Error($"Unknown tool '{name}'.");
         }
 
+        var arguments = @params?.Arguments?.AsReadOnly();
+
         try
         {
-            var jobId = scheduler.Enqueue(descriptor, @params?.Arguments?.AsReadOnly());
+            var jobId = await JobInvocationPipeline
+                .RunAsync(descriptor, arguments, services, scheduler, cancellationToken)
+                .ConfigureAwait(false);
             return new CallToolResult
             {
                 Content = [new TextContentBlock { Text = $"Enqueued Hangfire job {jobId}." }],
             };
+        }
+        catch (JobAuthorizationException ex)
+        {
+            return Error(ex.Message);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Error(ex.Message);
         }
         catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
         {
             return Error(ex.Message);
         }
     }
+
+    public static CallToolResult InvokeTool(
+        JobCatalog catalog,
+        HangfireDynamicScheduler scheduler,
+        MaintenanceDispatcher maintenance,
+        CallToolRequestParams? @params,
+        IServiceProvider? services = null
+    ) =>
+        InvokeToolAsync(catalog, scheduler, maintenance, @params, services)
+            .AsTask()
+            .GetAwaiter()
+            .GetResult();
 
     private static CallToolResult Error(string message) =>
         new() { Content = [new TextContentBlock { Text = message }], IsError = true };

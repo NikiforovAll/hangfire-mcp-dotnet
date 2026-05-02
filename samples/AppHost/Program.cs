@@ -46,4 +46,10 @@ builder
     .WithEnvironment("NODE_OPTIONS", "--max-http-header-size=32768")
     .WithMcpServer(web);
 
+builder
+    .AddNpmApp("docs", workingDirectory: "../..", scriptName: "docs:dev")
+    .WithHttpEndpoint(targetPort: 5173, port: 5173, isProxied: false)
+    .WithEnvironment("NODE_OPTIONS", "--max-http-header-size=32768")
+    .WithExternalHttpEndpoints();
+
 builder.Build().Run();

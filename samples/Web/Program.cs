@@ -24,6 +24,9 @@ builder.Services.AddProblemDetails();
 // the source generator. Default is RecurringStorage only.
 builder.Services.AddHangfireMcp(o => o.Sources = JobDiscoverySources.All);
 
+// Opt-in: enables [Authorize] on dynamically discovered Hangfire jobs.
+builder.Services.AddJobAuthorization();
+
 // Keycloak-backed JWT bearer auth + MCP protected-resource-metadata challenge.
 // The library itself is auth-agnostic — MapHangfireMcp returns IEndpointConventionBuilder,
 // so any ASP.NET Core auth scheme can be applied by chaining .RequireAuthorization() below.
@@ -71,7 +74,13 @@ builder
         };
     });
 
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(o =>
+{
+    // Demo policy referenced by [Authorize(Policy = "jobs:run")] on sample jobs.
+    // By default Keycloak test users don't have the "admin" role, so calling a guarded
+    // tool returns Forbidden — assign the role in Keycloak to flip this open.
+    o.AddPolicy("jobs:run", p => p.RequireRole("admin"));
+});
 
 // MCP Inspector (browser) fetches /.well-known/oauth-protected-resource/mcp
 // cross-origin from http://localhost:6274 during OAuth discovery.

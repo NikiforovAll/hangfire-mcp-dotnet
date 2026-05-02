@@ -56,6 +56,49 @@ public class MaintenanceDispatcherTests
     }
 
     [Fact]
+    public void ListJobs_without_state_scans_across_all_states()
+    {
+        var (client, d) = Setup();
+        var enqueuedId = client.Enqueue<ReportJob>(j => j.GenerateAsync(2026, "pdf"));
+
+        var r = d.Invoke(
+            new CallToolRequestParams
+            {
+                Name = MaintenanceTools.ListJobs,
+                Arguments = Args("""{"count": 100}"""),
+            }
+        );
+
+        r.IsError.ShouldNotBe(true);
+        var json = ResultJson(r);
+        var ids = json.GetProperty("jobs")
+            .EnumerateArray()
+            .Select(j => j.GetProperty("id").GetString())
+            .ToArray();
+        ids.ShouldContain(enqueuedId);
+    }
+
+    [Fact]
+    public void ListJobs_without_state_with_filter_applies_filter_across_states()
+    {
+        var (client, d) = Setup();
+        client.Enqueue<ReportJob>(j => j.GenerateAsync(2026, "pdf"));
+        client.Enqueue<NullableJob>(j => j.RunAsync(1, null, null));
+
+        var r = d.Invoke(
+            new CallToolRequestParams
+            {
+                Name = MaintenanceTools.ListJobs,
+                Arguments = Args("""{"filter": {"jobType": "ReportJob"}, "count": 100}"""),
+            }
+        );
+
+        r.IsError.ShouldNotBe(true);
+        var jobs = ResultJson(r).GetProperty("jobs");
+        jobs.GetArrayLength().ShouldBe(1);
+    }
+
+    [Fact]
     public void DeleteJob_succeeds_and_GetJob_shows_deleted_state()
     {
         var (client, d) = Setup();

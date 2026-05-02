@@ -43,7 +43,7 @@ public static class MaintenanceTools
             {
                 Name = ListJobs,
                 Description =
-                    "Page Hangfire jobs by state with optional filter. Use this to discover ids before bulk delete/requeue.",
+                    "Page Hangfire jobs with optional state and filter. Omit 'state' to query across all states. Use this to discover ids before bulk delete/requeue.",
                 InputSchema = ListJobsSchema(),
             },
             new Tool
@@ -125,7 +125,6 @@ public static class MaintenanceTools
                         ["default"] = 50,
                     },
                 },
-                ["required"] = new JsonArray { "state" },
             }
         );
 

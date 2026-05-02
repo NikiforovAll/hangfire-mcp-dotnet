@@ -36,7 +36,7 @@ public class McpPromptsIntegrationTests : IAsyncLifetime
                     services.AddSingleton<IRecurringJobManager>(_ => new RecurringJobManager(
                         storage
                     ));
-                    services.AddHangfireMcp();
+                    services.AddHangfireMcp(o => o.Sources = JobDiscoverySources.All);
                     services.AddRouting();
                 });
                 web.Configure(app =>
@@ -49,7 +49,10 @@ public class McpPromptsIntegrationTests : IAsyncLifetime
         _host = await builder.StartAsync();
 
         var manager = _host.Services.GetRequiredService<IRecurringJobManager>();
-        manager.AddOrUpdate<ReportJob>("nightly", j => j.GenerateAsync(2026, "pdf"), Cron.Daily());
+        CapabilityCatalogFixture.RegisterRecurringJobs(manager);
+
+        var client = _host.Services.GetRequiredService<IBackgroundJobClient>();
+        CapabilityCatalogFixture.RegisterManifestJobs(client);
 
         var testServer = _host.GetTestServer();
         var http = testServer.CreateClient();
@@ -109,7 +112,16 @@ public class McpPromptsIntegrationTests : IAsyncLifetime
             .Messages.ShouldHaveSingleItem()
             .Content.ShouldBeOfType<TextContentBlock>()
             .Text;
-        text.ShouldContain("Run_nightly");
+        text.ShouldContain("Run_send-message_text");
+        text.ShouldContain("Run_send-message_envelope");
+        text.ShouldContain("Run_report_generate");
+        text.ShouldContain("Run_data_export");
+        text.ShouldContain("Run_maint_rebuild-indexes");
+        text.ShouldContain("Run_notify_dispatch");
+        text.ShouldContain("Run_time_execute");
+        text.ShouldContain("Run_INotificationJob_BroadcastAsync");
+        text.ShouldContain("Run_IReportJob_PreviewAsync");
+        text.ShouldContain("Run_MaintenanceJob_VacuumAsync");
         text.ShouldContain("hangfire_get_statistics");
         text.ShouldContain("hangfire_list_jobs");
     }
@@ -121,6 +133,6 @@ public class McpPromptsIntegrationTests : IAsyncLifetime
 
         var names = tools.Select(t => t.Name).ToArray();
         names.ShouldContain("hangfire_get_statistics");
-        names.ShouldContain("Run_nightly");
+        names.ShouldContain("Run_time_execute");
     }
 }

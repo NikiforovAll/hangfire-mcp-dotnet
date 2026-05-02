@@ -9,12 +9,17 @@ namespace Nall.Hangfire.Mcp.Tests.Prompts;
 
 public class MaintenancePromptsTests
 {
-    private static JobCatalog Setup(Action<IRecurringJobManager> register)
+    private static JobCatalog Setup(
+        Action<IRecurringJobManager> register,
+        Action<IBackgroundJobClient>? enqueue = null,
+        JobDiscoverySources sources = JobDiscoverySources.RecurringStorage
+    )
     {
         var storage = new InMemoryStorage();
         JobStorage.Current = storage;
         register(new RecurringJobManager(storage));
-        return new JobCatalog(storage);
+        enqueue?.Invoke(new BackgroundJobClient(storage));
+        return new JobCatalog(storage, sources);
     }
 
     [Fact]
@@ -46,11 +51,11 @@ public class MaintenancePromptsTests
     [Fact]
     public Task Render_discover_with_jobs()
     {
-        var catalog = Setup(m =>
-        {
-            m.AddOrUpdate<ReportJob>("nightly", j => j.GenerateAsync(2026, "pdf"), Cron.Daily());
-            m.AddOrUpdate<IEmailJob>("send-welcome", j => j.SendAsync("a"), Cron.Daily());
-        });
+        var catalog = Setup(
+            CapabilityCatalogFixture.RegisterRecurringJobs,
+            CapabilityCatalogFixture.RegisterManifestJobs,
+            JobDiscoverySources.All
+        );
         return Verify(ToText(MaintenancePrompts.Render(MaintenancePrompts.Discover, catalog)));
     }
 
