@@ -1,4 +1,4 @@
-﻿description: Mindmap of Hangfire MCP prompts and discovered jobs.
+﻿description: Mindmap of Hangfire MCP maintenance and run-job tools.
 ---
 Hangfire MCP capabilities (mindmap):
 

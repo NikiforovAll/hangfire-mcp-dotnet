@@ -113,7 +113,7 @@ public static class MaintenancePrompts
         }
 
         return TextUserPrompt(
-            "Mindmap of Hangfire MCP prompts and discovered jobs.",
+            "Mindmap of Hangfire MCP maintenance and run-job tools.",
             sb.ToString().TrimEnd()
         );
     }
