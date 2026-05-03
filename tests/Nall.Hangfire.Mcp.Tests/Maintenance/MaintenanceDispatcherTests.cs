@@ -32,7 +32,10 @@ public class MaintenanceDispatcherTests
         var (_, d) = Setup();
         var r = d.Invoke(new CallToolRequestParams { Name = MaintenanceTools.GetStatistics });
         r.IsError.ShouldNotBe(true);
-        ResultJson(r).TryGetProperty("enqueued", out _).ShouldBeTrue();
+        var root = ResultJson(r);
+        root.GetProperty("counts").TryGetProperty("enqueued", out _).ShouldBeTrue();
+        root.TryGetProperty("now", out _).ShouldBeTrue();
+        root.TryGetProperty("trend24h", out _).ShouldBeTrue();
     }
 
     [Fact]

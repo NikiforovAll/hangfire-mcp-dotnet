@@ -47,6 +47,16 @@ public static class JobFilterMatcher
             }
         }
 
+        if (filter.Since is { } since && (match.At is null || match.At < since))
+        {
+            return false;
+        }
+
+        if (filter.Until is { } until && (match.At is null || match.At > until))
+        {
+            return false;
+        }
+
         return true;
     }
 

@@ -58,7 +58,6 @@ Every MCP server hosted by `AddHangfireMcp()` also exposes a fixed set of `hangf
 | Tool                      | Purpose                                                                                            |
 | ------------------------- | -------------------------------------------------------------------------------------------------- |
 | `hangfire_get_statistics` | Global counters: Enqueued/Failed/Processing/Scheduled/Succeeded/Deleted/Recurring/Retries/Servers. |
-| `hangfire_list_queues`    | Per-queue length + sample of first enqueued jobs.                                                  |
 | `hangfire_list_jobs`      | Page jobs by `state` with optional filter. Use this to discover ids before bulk ops.               |
 | `hangfire_get_job`        | Full details + state history for one id.                                                           |
 | `hangfire_delete_job`     | Move one job to Deleted.                                                                           |

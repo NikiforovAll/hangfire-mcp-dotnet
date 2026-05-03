@@ -78,7 +78,6 @@ public class McpToolsIntegrationTests : IAsyncLifetime
 
         var names = tools.Select(t => t.Name).ToArray();
         names.ShouldContain("hangfire_get_statistics");
-        names.ShouldContain("hangfire_list_queues");
         names.ShouldContain("hangfire_list_jobs");
         names.ShouldContain("hangfire_get_job");
         names.ShouldContain("hangfire_delete_job");

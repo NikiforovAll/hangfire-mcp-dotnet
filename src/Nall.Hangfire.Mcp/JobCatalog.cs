@@ -30,7 +30,7 @@ public sealed class JobCatalog
                     Name = d.ToolName,
                     Description =
                         JobDescriptionResolver.ResolveMethod(d.Method)
-                        ?? $"Enqueue Hangfire job '{d.RecurringJobId}' ({d.DeclaringType.Name}.{d.Method.Name}).",
+                        ?? $"Enqueue Hangfire job '{d.RecurringJobId}'.",
                     InputSchema = JobInputSchema.Build(d.Method),
                 })
                 .ToList(),
