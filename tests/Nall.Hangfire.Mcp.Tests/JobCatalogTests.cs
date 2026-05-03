@@ -62,7 +62,7 @@ public class JobCatalogTests
 
         var catalog = new JobCatalog(storage);
 
-        catalog.ListToolsResult.Tools[0].Description.ShouldBe("Enqueue Hangfire job 'plain'.");
+        catalog.ListToolsResult.Tools[0].Description.ShouldBe("Enqueue Hangfire job 'plain'");
     }
 
     [Fact]

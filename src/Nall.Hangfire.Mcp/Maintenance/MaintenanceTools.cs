@@ -42,34 +42,33 @@ public static class MaintenanceTools
             {
                 Name = GetJob,
                 Description =
-                    "Return full details for a single Hangfire job: type, method, args, properties, and state history.",
+                    "Return full details for a single Hangfire job: type, method, args, properties, and state history",
                 InputSchema = JobIdSchema(),
             },
             new Tool
             {
                 Name = DeleteJob,
-                Description = "Move a single job to the Deleted state.",
+                Description = "Move a single job to the Deleted state",
                 InputSchema = JobIdSchema(),
             },
             new Tool
             {
                 Name = RequeueJob,
-                Description =
-                    "Requeue a single job back to Enqueued (covers retry of Failed jobs).",
+                Description = "Requeue a single job back to Enqueued (covers retry of Failed jobs)",
                 InputSchema = JobIdSchema(),
             },
             new Tool
             {
                 Name = DeleteJobs,
                 Description =
-                    "Bulk delete jobs by explicit id list OR filter (exactly one). RECOMMENDED: pass dryRun:true first to preview matches before acting. Capped by MaintenanceMaxBulkSize.",
+                    "Bulk delete jobs by explicit id list OR filter (exactly one). RECOMMENDED: pass dryRun:true first to preview matches before acting. Capped by MaintenanceMaxBulkSize",
                 InputSchema = BulkSchema(),
             },
             new Tool
             {
                 Name = RequeueJobs,
                 Description =
-                    "Bulk requeue jobs by explicit id list OR filter (exactly one). RECOMMENDED: pass dryRun:true first to preview matches before acting. Capped by MaintenanceMaxBulkSize.",
+                    "Bulk requeue jobs by explicit id list OR filter (exactly one). RECOMMENDED: pass dryRun:true first to preview matches before acting. Capped by MaintenanceMaxBulkSize",
                 InputSchema = BulkSchema(),
             },
         };
