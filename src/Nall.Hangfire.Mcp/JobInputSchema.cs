@@ -29,6 +29,10 @@ public static class JobInputSchema
             {
                 continue;
             }
+            if (JobParameterFilter.IsCancellationToken(p))
+            {
+                continue;
+            }
 
             var schema = JsonSchemaExporter.GetJsonSchemaAsNode(s_schemaOptions, p.ParameterType);
             var description = JobDescriptionResolver.ResolveParameter(p);

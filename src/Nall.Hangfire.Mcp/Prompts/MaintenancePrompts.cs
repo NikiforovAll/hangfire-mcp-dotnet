@@ -54,18 +54,16 @@ public static class MaintenancePrompts
     private static GetPromptResult RenderHealthCheck()
     {
         const string text = """
-            You are a Hangfire operations assistant. Produce a one-screen health report by following these steps:
+            You are a Hangfire operations assistant. Produce a one-screen health report.
 
-            1. Call tool `hangfire_get_statistics` to retrieve global counters.
-            2. Call tool `hangfire_list_queues` to inspect per-queue lengths.
-            3. Synthesize a structured report with these sections:
-               - **Backlog**: Enqueued + Scheduled totals; flag if any single queue length exceeds 1000.
-               - **Failures**: Failed count and Retries; flag if Failed > 50 or > 1% of Succeeded.
-               - **Throughput**: Processing count vs Servers; flag if Processing > 0 but Servers = 0.
-               - **Recurring**: Recurring count.
-               - **Verdict**: a single line — "Healthy", "Degraded", or "Unhealthy" — with the dominant reason.
+            1. Call `hangfire_get_statistics` (single call gives counters, 24h trend, servers, recent failure groups).
+            2. Synthesize:
+               - **Backlog**: Enqueued + Scheduled.
+               - **Failures**: Failed + failedInWindow; flag dominant failureGroups.
+               - **Throughput**: Processing vs servers.WorkersCount; flag Processing > 0 with no live servers.
+               - **Verdict**: one line — "Healthy" | "Degraded" | "Unhealthy" + dominant reason.
 
-            Do not call any destructive tool (`hangfire_delete_*`, `hangfire_requeue_*`). This prompt is read-only.
+            Read-only: do not call `hangfire_delete_*` or `hangfire_requeue_*`.
             """;
         return TextUserPrompt("Hangfire operational health summary.", text);
     }
@@ -73,18 +71,17 @@ public static class MaintenancePrompts
     private static GetPromptResult RenderTriageFailures()
     {
         const string text = """
-            You are a Hangfire failure-triage assistant. Investigate failed jobs and recommend a remediation per failure group.
+            You are a Hangfire failure-triage assistant. Investigate failed jobs and recommend remediation per failure group.
 
             Steps:
-            1. Call `hangfire_list_jobs` with `state="Failed"`, `count=100`. Optionally narrow with `filter.jobType` if the user named a specific job.
-            2. Group results by `(jobType, exceptionType, first 80 chars of exceptionMessage)`. Sort by group size descending.
-            3. For each group, call `hangfire_get_job` on one representative id to fetch full state history.
-            4. Classify each group:
-               - **Transient** (timeout, network, 5xx, deadlock) → recommend **requeue**.
-               - **Poison** (deserialization, ArgumentException on stable input, 4xx with stable args) → recommend **delete**.
-               - **Unknown** → recommend manual investigation, do not act.
-            5. Present a markdown table: jobType | exception | count | recommendation | reasoning.
-            6. SAFETY: Before any destructive action, you MUST first call `hangfire_delete_jobs` or `hangfire_requeue_jobs` with `dryRun=true` and the same filter, show the matched ids to the user, and explicitly ask for confirmation. Only call again with `dryRun=false` after the user confirms.
+            1. Call `hangfire_get_statistics` — `failureGroups` already aggregates by (type, exception) with a sample id.
+            2. For each group, call `hangfire_get_job` on the sample id for full state history. Narrow further with `hangfire_list_jobs` (state="Failed", filter.jobType / filter.exceptionContains / filter.since) only if needed.
+            3. Classify:
+               - **Transient** (timeout, network, 5xx, deadlock) → **requeue**.
+               - **Poison** (deserialization, ArgumentException on stable input, 4xx with stable args) → **delete**.
+               - **Unknown** → manual investigation, do not act.
+            4. Present a markdown table: jobType | exception | count | recommendation | reasoning.
+            5. SAFETY: Before any destructive call, run `hangfire_delete_jobs`/`hangfire_requeue_jobs` with `dryRun=true` and the same filter, show matched ids, and wait for explicit user confirmation before calling again with `dryRun=false`.
             """;
         return TextUserPrompt("Triage Hangfire failure groups.", text);
     }
@@ -106,7 +103,12 @@ public static class MaintenancePrompts
         }
         else
         {
-            foreach (var tool in catalog.ListToolsResult.Tools)
+            foreach (
+                var tool in catalog.ListToolsResult.Tools.OrderBy(
+                    t => t.Name,
+                    StringComparer.Ordinal
+                )
+            )
             {
                 sb.AppendLine($"  - `{tool.Name}` — {tool.Description}");
             }

@@ -8,6 +8,7 @@ namespace Nall.Hangfire.Mcp.Maintenance;
 public sealed class MaintenanceQueryService
 {
     private const int PageSize = 1000;
+    private const string Unknown = "(unknown)";
 
     private readonly JobStorage _storage;
 
@@ -21,7 +22,128 @@ public sealed class MaintenanceQueryService
 
     public StatisticsDto GetStatistics() => Api.GetStatistics();
 
-    public IList<QueueWithTopEnqueuedJobsDto> ListQueues() => Api.Queues();
+    public StatisticsResult GetStatisticsRich(int windowHours, int recentLimit, int groupScan)
+    {
+        var api = Api;
+        var counts = api.GetStatistics();
+        var now = DateTime.UtcNow;
+        var since = now.AddHours(-windowHours);
+
+        var hourlySucceeded = SafeHourly(api.HourlySucceededJobs);
+        var hourlyFailed = SafeHourly(api.HourlyFailedJobs);
+        var trend = new Trend24h(SumLast(hourlySucceeded, since), SumLast(hourlyFailed, since));
+
+        var recentFailedIds = new List<string>();
+        var groups = new Dictionary<(string, string), FailureGroupAcc>(capacity: 8, comparer: null);
+        var failedInWindow = 0;
+
+        if (counts.Failed > 0)
+        {
+            var sample = api.FailedJobs(0, Math.Min(groupScan, (int)counts.Failed));
+            foreach (var kvp in sample)
+            {
+                var dto = kvp.Value;
+                if (dto.FailedAt is { } at && at < since)
+                {
+                    continue;
+                }
+                failedInWindow++;
+                if (recentFailedIds.Count < recentLimit)
+                {
+                    recentFailedIds.Add(kvp.Key);
+                }
+                var jobType = dto.Job?.Type;
+                var typeName = jobType?.FullName ?? jobType?.Name ?? Unknown;
+                var exType = dto.ExceptionType ?? Unknown;
+                var key = (typeName, exType);
+                if (!groups.TryGetValue(key, out var acc))
+                {
+                    acc = new FailureGroupAcc(
+                        typeName,
+                        exType,
+                        kvp.Key,
+                        dto.FailedAt,
+                        dto.FailedAt
+                    );
+                }
+                acc = acc with
+                {
+                    Count = acc.Count + 1,
+                    OldestAt =
+                        dto.FailedAt is { } a && (acc.OldestAt is null || a < acc.OldestAt)
+                            ? a
+                            : acc.OldestAt,
+                    NewestAt =
+                        dto.FailedAt is { } b && (acc.NewestAt is null || b > acc.NewestAt)
+                            ? b
+                            : acc.NewestAt,
+                };
+                groups[key] = acc;
+            }
+        }
+
+        var failureGroups = groups
+            .Values.OrderByDescending(g => g.Count)
+            .Take(5)
+            .Select(g => new FailureGroup(
+                g.Type,
+                g.Exception,
+                g.Count,
+                g.SampleId,
+                g.OldestAt,
+                g.NewestAt
+            ))
+            .ToList();
+
+        var servers = api.Servers()
+            .Select(s => new ServerInfo(s.Name, s.Heartbeat, s.WorkersCount, s.Queues, s.StartedAt))
+            .ToList();
+
+        return new StatisticsResult(
+            now,
+            counts,
+            trend,
+            failedInWindow,
+            failureGroups,
+            recentFailedIds,
+            servers,
+            windowHours
+        );
+    }
+
+    private static IDictionary<DateTime, long> SafeHourly(Func<IDictionary<DateTime, long>> fn)
+    {
+        try
+        {
+            return fn() ?? new Dictionary<DateTime, long>();
+        }
+        catch
+        {
+            return new Dictionary<DateTime, long>();
+        }
+    }
+
+    private static long SumLast(IDictionary<DateTime, long> series, DateTime since)
+    {
+        long total = 0;
+        foreach (var (k, v) in series)
+        {
+            if (k >= since)
+            {
+                total += v;
+            }
+        }
+        return total;
+    }
+
+    private sealed record FailureGroupAcc(
+        string Type,
+        string Exception,
+        string SampleId,
+        DateTime? OldestAt,
+        DateTime? NewestAt,
+        int Count = 1
+    );
 
     public JobDetailsDto? GetJob(string id) => Api.JobDetails(id);
 
@@ -146,38 +268,48 @@ public sealed class MaintenanceQueryService
             JobStateKind.Enqueued => FetchEnqueued(from, count),
             JobStateKind.Processing => Project(
                 Api.ProcessingJobs(from, count),
+                state,
                 d => d.Job,
                 _ => null,
                 _ => null,
-                _ => null
+                _ => null,
+                d => d.StartedAt
             ),
             JobStateKind.Scheduled => Project(
                 Api.ScheduledJobs(from, count),
+                state,
                 d => d.Job,
                 _ => null,
                 _ => null,
-                _ => null
+                _ => null,
+                d => d.ScheduledAt
             ),
             JobStateKind.Failed => Project(
                 Api.FailedJobs(from, count),
+                state,
                 d => d.Job,
                 d => d.Reason,
                 d => d.ExceptionType,
-                d => d.ExceptionMessage
+                d => d.ExceptionMessage,
+                d => d.FailedAt
             ),
             JobStateKind.Succeeded => Project(
                 Api.SucceededJobs(from, count),
+                state,
                 d => d.Job,
                 _ => null,
                 _ => null,
-                _ => null
+                _ => null,
+                d => d.SucceededAt
             ),
             JobStateKind.Deleted => Project(
                 Api.DeletedJobs(from, count),
+                state,
                 d => d.Job,
                 _ => null,
                 _ => null,
-                _ => null
+                _ => null,
+                d => d.DeletedAt
             ),
             _ => Array.Empty<JobMatch>(),
         };
@@ -202,7 +334,17 @@ public sealed class MaintenanceQueryService
             var pageCount = Math.Min(take, len - skip);
             foreach (var kvp in Api.EnqueuedJobs(queue.Name, skip, pageCount))
             {
-                results.Add(new JobMatch(kvp.Key, kvp.Value.Job, queue.Name, null, null, null));
+                results.Add(
+                    new JobMatch(
+                        kvp.Key,
+                        kvp.Value.Job,
+                        queue.Name,
+                        null,
+                        null,
+                        null,
+                        JobStateKind.Enqueued
+                    )
+                );
             }
             take -= pageCount;
             skip = 0;
@@ -212,24 +354,29 @@ public sealed class MaintenanceQueryService
 
     private static IReadOnlyList<JobMatch> Project<T>(
         JobList<T> list,
+        JobStateKind state,
         Func<T, Job?> getJob,
         Func<T, string?> getReason,
         Func<T, string?> getExceptionType,
-        Func<T, string?> getExceptionMessage
+        Func<T, string?> getExceptionMessage,
+        Func<T, DateTime?> getAt
     )
     {
         var results = new List<JobMatch>(list.Count);
         foreach (var kvp in list)
         {
             var dto = kvp.Value;
+            var job = getJob(dto);
             results.Add(
                 new JobMatch(
                     kvp.Key,
-                    getJob(dto),
-                    getJob(dto)?.Queue,
+                    job,
+                    job?.Queue,
                     getReason(dto),
                     getExceptionType(dto),
-                    getExceptionMessage(dto)
+                    getExceptionMessage(dto),
+                    state,
+                    getAt(dto)
                 )
             );
         }
@@ -243,7 +390,9 @@ public sealed record JobMatch(
     string? Queue,
     string? Reason,
     string? ExceptionType,
-    string? ExceptionMessage
+    string? ExceptionMessage,
+    JobStateKind State,
+    DateTime? At = null
 );
 
 public sealed record ScanResult(
@@ -252,4 +401,34 @@ public sealed record ScanResult(
     long StateTotal,
     bool Truncated,
     int NextFrom
+);
+
+public sealed record StatisticsResult(
+    DateTime Now,
+    StatisticsDto Counts,
+    Trend24h Trend,
+    int FailedInWindow,
+    IReadOnlyList<FailureGroup> FailureGroups,
+    IReadOnlyList<string> RecentFailedIds,
+    IReadOnlyList<ServerInfo> Servers,
+    int WindowHours
+);
+
+public sealed record Trend24h(long Succeeded, long Failed);
+
+public sealed record FailureGroup(
+    string Type,
+    string Exception,
+    int Count,
+    string SampleId,
+    DateTime? OldestAt,
+    DateTime? NewestAt
+);
+
+public sealed record ServerInfo(
+    string Name,
+    DateTime? Heartbeat,
+    int WorkersCount,
+    IList<string> Queues,
+    DateTime StartedAt
 );

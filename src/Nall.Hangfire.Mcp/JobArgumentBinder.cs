@@ -21,6 +21,11 @@ public static class JobArgumentBinder
         for (var i = 0; i < parameters.Length; i++)
         {
             var p = parameters[i];
+            if (JobParameterFilter.IsCancellationToken(p))
+            {
+                bound[i] = CancellationToken.None;
+                continue;
+            }
             if (
                 p.Name is not null
                 && arguments is not null

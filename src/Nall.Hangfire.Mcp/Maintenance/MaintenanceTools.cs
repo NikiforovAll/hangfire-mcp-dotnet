@@ -9,7 +9,6 @@ public static class MaintenanceTools
     public const string Prefix = "hangfire_";
 
     public const string GetStatistics = "hangfire_get_statistics";
-    public const string ListQueues = "hangfire_list_queues";
     public const string ListJobs = "hangfire_list_jobs";
     public const string GetJob = "hangfire_get_job";
     public const string DeleteJob = "hangfire_delete_job";
@@ -29,61 +28,87 @@ public static class MaintenanceTools
             {
                 Name = GetStatistics,
                 Description =
-                    "Return Hangfire global statistics: counts for Enqueued/Failed/Processing/Scheduled/Succeeded/Deleted/Recurring/Retries plus Servers and Queues.",
-                InputSchema = EmptyObject(),
-            },
-            new Tool
-            {
-                Name = ListQueues,
-                Description =
-                    "List Hangfire queues with their lengths and a sample of first enqueued jobs.",
-                InputSchema = EmptyObject(),
+                    "Return Hangfire health snapshot: counters, last-24h trend (succeeded/failed), live servers (heartbeat, workers, queues), recent failure groups and ids in a configurable window. Use this as the entry point for triage",
+                InputSchema = StatisticsSchema(),
             },
             new Tool
             {
                 Name = ListJobs,
                 Description =
-                    "Page Hangfire jobs with optional state and filter. Omit 'state' to query across all states. Use this to discover ids before bulk delete/requeue.",
+                    "Page Hangfire jobs with optional state and filter. Omit 'state' to query across all states. Use this to discover ids before bulk delete/requeue",
                 InputSchema = ListJobsSchema(),
             },
             new Tool
             {
                 Name = GetJob,
                 Description =
-                    "Return full details for a single Hangfire job: type, method, args, properties, and state history.",
+                    "Return full details for a single Hangfire job: type, method, args, properties, and state history",
                 InputSchema = JobIdSchema(),
             },
             new Tool
             {
                 Name = DeleteJob,
-                Description = "Move a single job to the Deleted state.",
+                Description = "Move a single job to the Deleted state",
                 InputSchema = JobIdSchema(),
             },
             new Tool
             {
                 Name = RequeueJob,
-                Description =
-                    "Requeue a single job back to Enqueued (covers retry of Failed jobs).",
+                Description = "Requeue a single job back to Enqueued (covers retry of Failed jobs)",
                 InputSchema = JobIdSchema(),
             },
             new Tool
             {
                 Name = DeleteJobs,
                 Description =
-                    "Bulk delete jobs by explicit id list OR filter (exactly one). RECOMMENDED: pass dryRun:true first to preview matches before acting. Capped by MaintenanceMaxBulkSize.",
+                    "Bulk delete jobs by explicit id list OR filter (exactly one). RECOMMENDED: pass dryRun:true first to preview matches before acting. Capped by MaintenanceMaxBulkSize",
                 InputSchema = BulkSchema(),
             },
             new Tool
             {
                 Name = RequeueJobs,
                 Description =
-                    "Bulk requeue jobs by explicit id list OR filter (exactly one). RECOMMENDED: pass dryRun:true first to preview matches before acting. Capped by MaintenanceMaxBulkSize.",
+                    "Bulk requeue jobs by explicit id list OR filter (exactly one). RECOMMENDED: pass dryRun:true first to preview matches before acting. Capped by MaintenanceMaxBulkSize",
                 InputSchema = BulkSchema(),
             },
         };
 
-    private static JsonElement EmptyObject() =>
-        ToElement(new JsonObject { ["type"] = "object", ["properties"] = new JsonObject() });
+    private static JsonElement StatisticsSchema() =>
+        ToElement(
+            new JsonObject
+            {
+                ["type"] = "object",
+                ["properties"] = new JsonObject
+                {
+                    ["windowHours"] = new JsonObject
+                    {
+                        ["type"] = "integer",
+                        ["minimum"] = 1,
+                        ["maximum"] = 168,
+                        ["default"] = 24,
+                        ["description"] =
+                            "Lookback window for failedInWindow / failureGroups / recentFailedIds.",
+                    },
+                    ["recentLimit"] = new JsonObject
+                    {
+                        ["type"] = "integer",
+                        ["minimum"] = 1,
+                        ["maximum"] = 100,
+                        ["default"] = 20,
+                        ["description"] = "Max ids returned in recentFailedIds.",
+                    },
+                    ["groupScan"] = new JsonObject
+                    {
+                        ["type"] = "integer",
+                        ["minimum"] = 1,
+                        ["maximum"] = 500,
+                        ["default"] = 100,
+                        ["description"] =
+                            "How many recent Failed jobs to scan when computing failureGroups.",
+                    },
+                },
+            }
+        );
 
     private static JsonElement JobIdSchema() =>
         ToElement(
@@ -179,6 +204,19 @@ public static class MaintenanceTools
                 ["type"] = "string",
                 ["description"] =
                     "Substring match against ExceptionType / ExceptionMessage (Failed only).",
+            },
+            ["since"] = new JsonObject
+            {
+                ["type"] = "string",
+                ["format"] = "date-time",
+                ["description"] =
+                    "Inclusive lower bound on the state-transition timestamp (e.g. FailedAt for Failed). ISO-8601 UTC. Jobs with no timestamp (Enqueued) are excluded when set.",
+            },
+            ["until"] = new JsonObject
+            {
+                ["type"] = "string",
+                ["format"] = "date-time",
+                ["description"] = "Inclusive upper bound on the state-transition timestamp.",
             },
         };
         var schema = new JsonObject { ["type"] = "object", ["properties"] = props };

@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using ModelContextProtocol.Protocol;
@@ -36,8 +37,7 @@ public sealed class MaintenanceDispatcher
             var args = @params?.Arguments?.AsReadOnly();
             return name switch
             {
-                MaintenanceTools.GetStatistics => Json(ProjectStatistics(_query.GetStatistics())),
-                MaintenanceTools.ListQueues => Json(ProjectQueues(_query.ListQueues())),
+                MaintenanceTools.GetStatistics => HandleGetStatistics(args),
                 MaintenanceTools.ListJobs => HandleListJobs(args),
                 MaintenanceTools.GetJob => HandleGetJob(args),
                 MaintenanceTools.DeleteJob => HandleDeleteJob(args),
@@ -52,6 +52,31 @@ public sealed class MaintenanceDispatcher
         {
             return Error(ex.Message);
         }
+    }
+
+    private CallToolResult HandleGetStatistics(IReadOnlyDictionary<string, JsonElement>? args)
+    {
+        var windowHours = ReadIntInRange(args, "windowHours", 24, 1, 168);
+        var recentLimit = ReadIntInRange(args, "recentLimit", 20, 1, 100);
+        var groupScan = ReadIntInRange(args, "groupScan", 100, 1, 500);
+        var rich = _query.GetStatisticsRich(windowHours, recentLimit, groupScan);
+        return Json(ProjectStatisticsRich(rich));
+    }
+
+    private static int ReadIntInRange(
+        IReadOnlyDictionary<string, JsonElement>? args,
+        string key,
+        int @default,
+        int min,
+        int max
+    )
+    {
+        var value = ReadInt(args, key) ?? @default;
+        if (value < min || value > max)
+        {
+            throw new ArgumentException($"'{key}' must be between {min} and {max}.");
+        }
+        return value;
     }
 
     private CallToolResult HandleListJobs(IReadOnlyDictionary<string, JsonElement>? args)
@@ -91,7 +116,7 @@ public sealed class MaintenanceDispatcher
                 Id = id,
                 Type = dto.Job?.Type?.FullName,
                 Method = dto.Job?.Method?.Name,
-                Args = dto.Job?.Args,
+                Args = dto.Job?.Args?.Select(SafeRenderArg).ToArray(),
                 Properties = dto.Properties,
                 ExpireAt = dto.ExpireAt,
                 CreatedAt = dto.CreatedAt,
@@ -154,6 +179,8 @@ public sealed class MaintenanceDispatcher
             Method = ReadStringProp(el, "method"),
             MessageContains = ReadStringProp(el, "messageContains"),
             ExceptionContains = ReadStringProp(el, "exceptionContains"),
+            Since = ReadDateTimeProp(el, "since"),
+            Until = ReadDateTimeProp(el, "until"),
         };
     }
 
@@ -166,6 +193,26 @@ public sealed class MaintenanceDispatcher
         obj.TryGetProperty(key, out var v) && v.ValueKind == JsonValueKind.String
             ? v.GetString()
             : null;
+
+    private static DateTime? ReadDateTimeProp(JsonElement obj, string key)
+    {
+        if (
+            !obj.TryGetProperty(key, out var v)
+            || v.ValueKind != JsonValueKind.String
+            || v.GetString() is not { } s
+        )
+        {
+            return null;
+        }
+        return DateTime.TryParse(
+            s,
+            CultureInfo.InvariantCulture,
+            DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
+            out var dt
+        )
+            ? dt
+            : null;
+    }
 
     private static int? ReadInt(IReadOnlyDictionary<string, JsonElement>? args, string key) =>
         args is not null && args.TryGetValue(key, out var v) && v.ValueKind == JsonValueKind.Number
@@ -218,40 +265,46 @@ public sealed class MaintenanceDispatcher
             ? v
             : null;
 
-    private static object ProjectStatistics(global::Hangfire.Storage.Monitoring.StatisticsDto s) =>
+    private static object ProjectStatisticsRich(StatisticsResult r) =>
         new
         {
-            s.Servers,
-            s.Queues,
-            s.Enqueued,
-            s.Failed,
-            s.Processing,
-            s.Scheduled,
-            s.Succeeded,
-            s.Deleted,
-            s.Recurring,
-            s.Retries,
-        };
-
-    private static object ProjectQueues(
-        IList<global::Hangfire.Storage.Monitoring.QueueWithTopEnqueuedJobsDto> queues
-    ) =>
-        queues
-            .Select(q => new
+            now = r.Now,
+            counts = new
             {
-                q.Name,
-                q.Length,
-                q.Fetched,
-                FirstJobs = q
-                    .FirstJobs.Select(j => new { Id = j.Key, Type = j.Value.Job?.Type?.FullName })
-                    .ToArray(),
-            })
-            .ToArray();
+                r.Counts.Servers,
+                r.Counts.Queues,
+                r.Counts.Enqueued,
+                r.Counts.Failed,
+                r.Counts.Processing,
+                r.Counts.Scheduled,
+                r.Counts.Succeeded,
+                r.Counts.Deleted,
+                r.Counts.Recurring,
+                r.Counts.Retries,
+            },
+            trend24h = new { r.Trend.Succeeded, r.Trend.Failed },
+            r.WindowHours,
+            r.FailedInWindow,
+            failureGroups = r.FailureGroups.Count == 0 ? null : (object)r.FailureGroups,
+            recentFailedIds = r.RecentFailedIds.Count == 0 ? null : (object)r.RecentFailedIds,
+            servers = r
+                .Servers.Select(s => new
+                {
+                    s.Name,
+                    s.Heartbeat,
+                    s.WorkersCount,
+                    s.Queues,
+                    s.StartedAt,
+                })
+                .ToArray(),
+        };
 
     private static object ProjectMatch(JobMatch m) =>
         new
         {
             m.Id,
+            State = m.State.ToString(),
+            m.At,
             Type = m.Job?.Type?.FullName,
             Method = m.Job?.Method?.Name,
             m.Queue,
@@ -259,6 +312,26 @@ public sealed class MaintenanceDispatcher
             m.ExceptionType,
             m.ExceptionMessage,
         };
+
+    private static object? SafeRenderArg(object? arg)
+    {
+        if (arg is null)
+        {
+            return null;
+        }
+        if (arg is CancellationToken)
+        {
+            return "<CancellationToken>";
+        }
+        try
+        {
+            return JsonSerializer.SerializeToElement(arg, s_json);
+        }
+        catch (NotSupportedException)
+        {
+            return arg.GetType().FullName;
+        }
+    }
 
     private static CallToolResult Json(object payload) =>
         new()

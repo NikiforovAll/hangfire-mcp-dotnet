@@ -18,4 +18,6 @@ public sealed record JobFilter
     public string? Method { get; init; }
     public string? MessageContains { get; init; }
     public string? ExceptionContains { get; init; }
+    public DateTime? Since { get; init; }
+    public DateTime? Until { get; init; }
 }

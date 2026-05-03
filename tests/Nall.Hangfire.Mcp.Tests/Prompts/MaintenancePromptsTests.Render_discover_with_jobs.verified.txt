@@ -3,30 +3,29 @@
 Hangfire MCP capabilities (mindmap):
 
 - Maintenance tools
-  - `hangfire_get_statistics` — Return Hangfire global statistics: counts for Enqueued/Failed/Processing/Scheduled/Succeeded/Deleted/Recurring/Retries plus Servers and Queues.
-  - `hangfire_list_queues` — List Hangfire queues with their lengths and a sample of first enqueued jobs.
-  - `hangfire_list_jobs` — Page Hangfire jobs with optional state and filter. Omit 'state' to query across all states. Use this to discover ids before bulk delete/requeue.
-  - `hangfire_get_job` — Return full details for a single Hangfire job: type, method, args, properties, and state history.
-  - `hangfire_delete_job` — Move a single job to the Deleted state.
-  - `hangfire_requeue_job` — Requeue a single job back to Enqueued (covers retry of Failed jobs).
-  - `hangfire_delete_jobs` — Bulk delete jobs by explicit id list OR filter (exactly one). RECOMMENDED: pass dryRun:true first to preview matches before acting. Capped by MaintenanceMaxBulkSize.
-  - `hangfire_requeue_jobs` — Bulk requeue jobs by explicit id list OR filter (exactly one). RECOMMENDED: pass dryRun:true first to preview matches before acting. Capped by MaintenanceMaxBulkSize.
+  - `hangfire_get_statistics` — Return Hangfire health snapshot: counters, last-24h trend (succeeded/failed), live servers (heartbeat, workers, queues), recent failure groups and ids in a configurable window. Use this as the entry point for triage
+  - `hangfire_list_jobs` — Page Hangfire jobs with optional state and filter. Omit 'state' to query across all states. Use this to discover ids before bulk delete/requeue
+  - `hangfire_get_job` — Return full details for a single Hangfire job: type, method, args, properties, and state history
+  - `hangfire_delete_job` — Move a single job to the Deleted state
+  - `hangfire_requeue_job` — Requeue a single job back to Enqueued (covers retry of Failed jobs)
+  - `hangfire_delete_jobs` — Bulk delete jobs by explicit id list OR filter (exactly one). RECOMMENDED: pass dryRun:true first to preview matches before acting. Capped by MaintenanceMaxBulkSize
+  - `hangfire_requeue_jobs` — Bulk requeue jobs by explicit id list OR filter (exactly one). RECOMMENDED: pass dryRun:true first to preview matches before acting. Capped by MaintenanceMaxBulkSize
 - Run jobs (tools)
-  - `Run_time_execute` — Enqueue Hangfire job 'time.execute' (ITimeJob.ExecuteAsync).
-  - `Run_notify_dispatch` — Send a notification to a specific channel with an optional message and priority.
-  - `Run_send-message_text` — Enqueue Hangfire job 'send-message.text' (ISendMessageJob.ExecuteAsync).
-  - `Run_report_generate` — Generate the annual financial report and persist it to the report store.
-  - `Run_send-message_envelope` — Enqueue Hangfire job 'send-message.envelope' (ISendMessageJob.ExecuteAsync).
-  - `Run_data_export` — Export the named tables to the data lake in the requested format.
-  - `Run_maint_rebuild-indexes` — Rebuild all indexes in the given PostgreSQL schema.
   - `Run_DescribedJob_RunAsync` — Iface-level method description.
   - `Run_DirectlyDescribedJob_RunAsync` — Direct method description.
   - `Run_IEmailJob_SendAsync_1` — Send a transactional email to the given recipient.
-  - `Run_IEmailJob_SendAsync_2` — Enqueue Hangfire job 'IEmailJob_SendAsync_2' (IEmailJob.SendAsync).
-  - `Run_INotificationJob_BroadcastAsync` — Enqueue Hangfire job 'INotificationJob_BroadcastAsync' (INotificationJob.BroadcastAsync).
-  - `Run_IReportJob_PreviewAsync` — Enqueue Hangfire job 'IReportJob_PreviewAsync' (IReportJob.PreviewAsync).
-  - `Run_MaintenanceJob_VacuumAsync` — Enqueue Hangfire job 'MaintenanceJob_VacuumAsync' (MaintenanceJob.VacuumAsync).
-  - `Run_NullableJob_RunAsync` — Enqueue Hangfire job 'NullableJob_RunAsync' (NullableJob.RunAsync).
+  - `Run_IEmailJob_SendAsync_2` — Enqueue Hangfire job 'IEmailJob_SendAsync_2'
+  - `Run_INotificationJob_BroadcastAsync` — Enqueue Hangfire job 'INotificationJob_BroadcastAsync'
+  - `Run_IReportJob_PreviewAsync` — Enqueue Hangfire job 'IReportJob_PreviewAsync'
+  - `Run_MaintJob_RunAsync` — Enqueue Hangfire job 'MaintJob_RunAsync'
+  - `Run_MaintenanceJob_VacuumAsync` — Enqueue Hangfire job 'MaintenanceJob_VacuumAsync'
+  - `Run_NullableJob_RunAsync` — Enqueue Hangfire job 'NullableJob_RunAsync'
   - `Run_ReportJob_GenerateAsync` — Generate the annual report.
-  - `Run_UndescribedJob_RunAsync` — Enqueue Hangfire job 'UndescribedJob_RunAsync' (UndescribedJob.RunAsync).
-  - `Run_MaintJob_RunAsync` — Enqueue Hangfire job 'MaintJob_RunAsync' (MaintJob.RunAsync).
+  - `Run_UndescribedJob_RunAsync` — Enqueue Hangfire job 'UndescribedJob_RunAsync'
+  - `Run_data_export` — Export the named tables to the data lake in the requested format.
+  - `Run_maint_rebuild-indexes` — Rebuild all indexes in the given PostgreSQL schema.
+  - `Run_notify_dispatch` — Send a notification to a specific channel with an optional message and priority.
+  - `Run_report_generate` — Generate the annual financial report and persist it to the report store.
+  - `Run_send-message_envelope` — Enqueue Hangfire job 'send-message.envelope'
+  - `Run_send-message_text` — Enqueue Hangfire job 'send-message.text'
+  - `Run_time_execute` — Enqueue Hangfire job 'time.execute'
