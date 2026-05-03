@@ -91,7 +91,7 @@ public sealed class MaintenanceDispatcher
                 Id = id,
                 Type = dto.Job?.Type?.FullName,
                 Method = dto.Job?.Method?.Name,
-                Args = dto.Job?.Args,
+                Args = dto.Job?.Args?.Select(SafeRenderArg).ToArray(),
                 Properties = dto.Properties,
                 ExpireAt = dto.ExpireAt,
                 CreatedAt = dto.CreatedAt,
@@ -252,6 +252,8 @@ public sealed class MaintenanceDispatcher
         new
         {
             m.Id,
+            State = m.State.ToString(),
+            m.At,
             Type = m.Job?.Type?.FullName,
             Method = m.Job?.Method?.Name,
             m.Queue,
@@ -259,6 +261,26 @@ public sealed class MaintenanceDispatcher
             m.ExceptionType,
             m.ExceptionMessage,
         };
+
+    private static object? SafeRenderArg(object? arg)
+    {
+        if (arg is null)
+        {
+            return null;
+        }
+        if (arg is CancellationToken)
+        {
+            return "<CancellationToken>";
+        }
+        try
+        {
+            return JsonSerializer.SerializeToElement(arg, s_json);
+        }
+        catch (NotSupportedException)
+        {
+            return arg.GetType().FullName;
+        }
+    }
 
     private static CallToolResult Json(object payload) =>
         new()

@@ -12,8 +12,9 @@ public class JobFilterMatcherTests
         string? queue = null,
         string? reason = null,
         string? exType = null,
-        string? exMsg = null
-    ) => new("id-1", job, queue, reason, exType, exMsg);
+        string? exMsg = null,
+        JobStateKind state = JobStateKind.Enqueued
+    ) => new("id-1", job, queue, reason, exType, exMsg, state);
 
     private static Job ReportJobInstance() =>
         new(

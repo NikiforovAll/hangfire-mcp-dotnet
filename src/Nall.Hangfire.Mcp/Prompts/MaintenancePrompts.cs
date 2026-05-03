@@ -106,7 +106,12 @@ public static class MaintenancePrompts
         }
         else
         {
-            foreach (var tool in catalog.ListToolsResult.Tools)
+            foreach (
+                var tool in catalog.ListToolsResult.Tools.OrderBy(
+                    t => t.Name,
+                    StringComparer.Ordinal
+                )
+            )
             {
                 sb.AppendLine($"  - `{tool.Name}` — {tool.Description}");
             }

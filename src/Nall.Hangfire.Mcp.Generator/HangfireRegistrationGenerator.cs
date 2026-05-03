@@ -85,6 +85,25 @@ public sealed class HangfireRegistrationGenerator : IIncrementalGenerator
         return s_registrationMethodNames.Contains(name);
     }
 
+    // Accepts any method whose registered-name shape is a Hangfire-style wrapper:
+    // it forwards a job lambda via System.Linq.Expressions.Expression<TDelegate>.
+    private static bool HasExpressionDelegateParameter(IMethodSymbol method)
+    {
+        foreach (var p in method.Parameters)
+        {
+            if (
+                p.Type is INamedTypeSymbol { IsGenericType: true } named
+                && named.OriginalDefinition.Name == "Expression"
+                && named.OriginalDefinition.ContainingNamespace?.ToDisplayString()
+                    == "System.Linq.Expressions"
+            )
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private static Entry? Extract(GeneratorSyntaxContext ctx)
     {
         var inv = (InvocationExpressionSyntax)ctx.Node;
@@ -97,7 +116,9 @@ public sealed class HangfireRegistrationGenerator : IIncrementalGenerator
         }
 
         var containing = method.ContainingType?.ToDisplayString();
-        if (containing is null || !s_hangfireContainingTypes.Contains(containing))
+        var isHangfireApi =
+            containing is not null && s_hangfireContainingTypes.Contains(containing);
+        if (!isHangfireApi && !HasExpressionDelegateParameter(method))
         {
             return null;
         }
@@ -172,9 +193,19 @@ public sealed class HangfireRegistrationGenerator : IIncrementalGenerator
         sb.AppendLine("        [System.Runtime.CompilerServices.ModuleInitializer]");
         sb.AppendLine("        internal static void Register()");
         sb.AppendLine("        {");
-        sb.AppendLine("            global::Nall.Hangfire.Mcp.Manifest.JobManifestRegistry.Add(");
-        sb.AppendLine("                typeof(HangfireJobManifest).Assembly,");
-        sb.AppendLine("                Entries);");
+        sb.AppendLine(
+            "            // Reflection-based to avoid forcing consumers to reference Nall.Hangfire.Mcp at compile time."
+        );
+        sb.AppendLine(
+            "            var registry = System.Type.GetType(\"Nall.Hangfire.Mcp.Manifest.JobManifestRegistry, Nall.Hangfire.Mcp\", throwOnError: false);"
+        );
+        sb.AppendLine("            if (registry is null) { return; }");
+        sb.AppendLine(
+            "            var add = registry.GetMethod(\"Add\", new System.Type[] { typeof(System.Reflection.Assembly), typeof((System.Type, string, System.Type[])[]) });"
+        );
+        sb.AppendLine(
+            "            add?.Invoke(null, new object[] { typeof(HangfireJobManifest).Assembly, Entries });"
+        );
         sb.AppendLine("        }");
         sb.AppendLine();
         sb.AppendLine(

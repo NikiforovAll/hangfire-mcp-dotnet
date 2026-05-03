@@ -55,6 +55,13 @@ public class OpenJob
     public Task RunAsync() => Task.CompletedTask;
 }
 
+public class CancellationTokenJob
+{
+    public Task RunAsync(string name, CancellationToken cancellationToken) => Task.CompletedTask;
+
+    public Task TokenOnlyAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+}
+
 public class SameArityOverloadsJob
 {
     public Task RunAsync(int value) => Task.CompletedTask;

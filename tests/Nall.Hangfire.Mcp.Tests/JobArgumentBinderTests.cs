@@ -66,6 +66,41 @@ public class JobArgumentBinderTests
     }
 
     [Fact]
+    public void Binds_cancellation_token_to_none_without_user_input()
+    {
+        var method = typeof(CancellationTokenJob).GetMethod(nameof(CancellationTokenJob.RunAsync))!;
+
+        var bound = JobArgumentBinder.Bind(method, Args("""{"name": "x"}"""));
+
+        bound.ShouldBe(["x", CancellationToken.None]);
+    }
+
+    [Fact]
+    public void Binds_cancellation_token_only_method_without_arguments()
+    {
+        var method = typeof(CancellationTokenJob).GetMethod(
+            nameof(CancellationTokenJob.TokenOnlyAsync)
+        )!;
+
+        var bound = JobArgumentBinder.Bind(method, arguments: null);
+
+        bound.ShouldBe([CancellationToken.None]);
+    }
+
+    [Fact]
+    public void Ignores_user_supplied_cancellation_token_argument()
+    {
+        var method = typeof(CancellationTokenJob).GetMethod(nameof(CancellationTokenJob.RunAsync))!;
+
+        var bound = JobArgumentBinder.Bind(
+            method,
+            Args("""{"name": "x", "cancellationToken": "anything"}""")
+        );
+
+        bound.ShouldBe(["x", CancellationToken.None]);
+    }
+
+    [Fact]
     public void Throws_on_null_method()
     {
         Should.Throw<ArgumentNullException>(() => JobArgumentBinder.Bind(null!, arguments: null));

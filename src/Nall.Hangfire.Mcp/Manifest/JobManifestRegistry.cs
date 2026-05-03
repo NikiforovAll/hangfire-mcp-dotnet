@@ -10,10 +10,11 @@ public static class JobManifestRegistry
 
     public static void Add(
         Assembly source,
-        ReadOnlySpan<(Type Type, string Method, Type[] ParameterTypes)> entries
+        (Type Type, string Method, Type[] ParameterTypes)[] entries
     )
     {
         ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(entries);
 
         var resolved = new List<JobDescriptor>(entries.Length);
         foreach (var (type, method, paramTypes) in entries)

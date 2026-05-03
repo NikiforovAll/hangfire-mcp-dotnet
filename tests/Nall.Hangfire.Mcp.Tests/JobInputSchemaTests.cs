@@ -71,6 +71,39 @@ public class JobInputSchemaTests
     }
 
     [Fact]
+    public void Build_excludes_cancellation_token_parameter()
+    {
+        var method = typeof(CancellationTokenJob).GetMethod(nameof(CancellationTokenJob.RunAsync))!;
+
+        var schema = JobInputSchema.Build(method);
+        var doc = JsonDocument.Parse(schema.GetRawText()).RootElement;
+
+        var props = doc.GetProperty("properties");
+        props.TryGetProperty("name", out _).ShouldBeTrue();
+        props.TryGetProperty("cancellationToken", out _).ShouldBeFalse();
+
+        var required = doc.GetProperty("required")
+            .EnumerateArray()
+            .Select(e => e.GetString())
+            .ToArray();
+        required.ShouldBe(["name"]);
+    }
+
+    [Fact]
+    public void Build_emits_empty_schema_when_only_cancellation_token()
+    {
+        var method = typeof(CancellationTokenJob).GetMethod(
+            nameof(CancellationTokenJob.TokenOnlyAsync)
+        )!;
+
+        var schema = JobInputSchema.Build(method);
+        var doc = JsonDocument.Parse(schema.GetRawText()).RootElement;
+
+        doc.GetProperty("properties").EnumerateObject().ShouldBeEmpty();
+        doc.TryGetProperty("required", out _).ShouldBeFalse();
+    }
+
+    [Fact]
     public void Build_throws_on_null_method()
     {
         Should.Throw<ArgumentNullException>(() => JobInputSchema.Build(null!));

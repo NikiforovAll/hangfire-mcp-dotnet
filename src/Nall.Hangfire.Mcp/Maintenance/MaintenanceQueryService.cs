@@ -146,38 +146,48 @@ public sealed class MaintenanceQueryService
             JobStateKind.Enqueued => FetchEnqueued(from, count),
             JobStateKind.Processing => Project(
                 Api.ProcessingJobs(from, count),
+                state,
                 d => d.Job,
                 _ => null,
                 _ => null,
-                _ => null
+                _ => null,
+                d => d.StartedAt
             ),
             JobStateKind.Scheduled => Project(
                 Api.ScheduledJobs(from, count),
+                state,
                 d => d.Job,
                 _ => null,
                 _ => null,
-                _ => null
+                _ => null,
+                d => d.ScheduledAt
             ),
             JobStateKind.Failed => Project(
                 Api.FailedJobs(from, count),
+                state,
                 d => d.Job,
                 d => d.Reason,
                 d => d.ExceptionType,
-                d => d.ExceptionMessage
+                d => d.ExceptionMessage,
+                d => d.FailedAt
             ),
             JobStateKind.Succeeded => Project(
                 Api.SucceededJobs(from, count),
+                state,
                 d => d.Job,
                 _ => null,
                 _ => null,
-                _ => null
+                _ => null,
+                d => d.SucceededAt
             ),
             JobStateKind.Deleted => Project(
                 Api.DeletedJobs(from, count),
+                state,
                 d => d.Job,
                 _ => null,
                 _ => null,
-                _ => null
+                _ => null,
+                d => d.DeletedAt
             ),
             _ => Array.Empty<JobMatch>(),
         };
@@ -202,7 +212,17 @@ public sealed class MaintenanceQueryService
             var pageCount = Math.Min(take, len - skip);
             foreach (var kvp in Api.EnqueuedJobs(queue.Name, skip, pageCount))
             {
-                results.Add(new JobMatch(kvp.Key, kvp.Value.Job, queue.Name, null, null, null));
+                results.Add(
+                    new JobMatch(
+                        kvp.Key,
+                        kvp.Value.Job,
+                        queue.Name,
+                        null,
+                        null,
+                        null,
+                        JobStateKind.Enqueued
+                    )
+                );
             }
             take -= pageCount;
             skip = 0;
@@ -212,24 +232,29 @@ public sealed class MaintenanceQueryService
 
     private static IReadOnlyList<JobMatch> Project<T>(
         JobList<T> list,
+        JobStateKind state,
         Func<T, Job?> getJob,
         Func<T, string?> getReason,
         Func<T, string?> getExceptionType,
-        Func<T, string?> getExceptionMessage
+        Func<T, string?> getExceptionMessage,
+        Func<T, DateTime?> getAt
     )
     {
         var results = new List<JobMatch>(list.Count);
         foreach (var kvp in list)
         {
             var dto = kvp.Value;
+            var job = getJob(dto);
             results.Add(
                 new JobMatch(
                     kvp.Key,
-                    getJob(dto),
-                    getJob(dto)?.Queue,
+                    job,
+                    job?.Queue,
                     getReason(dto),
                     getExceptionType(dto),
-                    getExceptionMessage(dto)
+                    getExceptionMessage(dto),
+                    state,
+                    getAt(dto)
                 )
             );
         }
@@ -243,7 +268,9 @@ public sealed record JobMatch(
     string? Queue,
     string? Reason,
     string? ExceptionType,
-    string? ExceptionMessage
+    string? ExceptionMessage,
+    JobStateKind State,
+    DateTime? At = null
 );
 
 public sealed record ScanResult(
